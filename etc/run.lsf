@@ -1,0 +1,16 @@
+#!/bin/bash -l
+
+#BSUB -o job.%J.out
+#BSUB -e job.%J.err
+#BSUB -q  rh6_q20m
+######BSUB -W 00:05:00
+#BSUB -n 8
+#BSUB -app default  
+#BSUB -a openmpi
+
+
+module load gcc mpi-openmpi 
+module load libs-extra 
+module load fftw2/2.1.5-openmpi-1.4.3-sse4.2-sp namd 
+
+mpirun.lsf namd2_mpi  apoa1.namd  

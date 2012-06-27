@@ -1,0 +1,55 @@
+%YAML 1.2
+---
+KaBS:
+   HOME: /home/naranjja/devel/KaBS
+   BATCH:
+      SCRIPT: run.lsf.in
+      SUBMIT: 
+         COMMAND: bsub 
+         PARAMETERS: <  
+   BENCH: 
+      APPS:
+         - name: cp2k
+           active: false
+
+         - name: gromacs
+           active: false
+
+         - name: namd
+           active: true
+           dataset: 
+              - name: nucleosome_146K_atoms
+                active: true
+
+              - name: apoa1  
+                active: false
+        
+         - name: siesta
+           active: false
+
+         - name: vasp
+           active: true
+           dataset:
+                - name: Hg
+                - active: true
+
+         - name  : material studio
+           active: false     
+
+      FILESYSTEM: 
+         gpfs: false
+
+      MATHLIBS: 
+         - name: blas
+           active: false
+     
+         - name: lapack
+           active: false     
+
+      NETWORK: 
+         mpi: true
+
+      SYNTHETIC:
+         hpcc: true
+            
+...

@@ -1,0 +1,69 @@
+#Dinamica
+
+rigidBonds           all
+rigidTolerance       0.0005
+rigidIterations      10
+
+#steps
+numsteps             2000
+firstldbStep	     100
+ldbPeriod	     500
+
+#firsttimestep        0
+timestep             2
+restartfreq          10000
+DCDfreq              10000   
+outputEnergies       100
+
+#non-bonded
+nonBondedFreq        1
+fullElectFrequency   1
+stepsPerCycle        10 
+cutoff               10.
+exclude              scaled1-4
+1-4scaling           0.833333
+pairlistdist         10
+switching            off
+
+
+#Temperature coupling
+tCouple              on
+tCoupleTemp          300
+tCouplefile          w1kx5.md399out.coor
+tCoupleCol           O
+
+#Pressure coupling
+useGroupPressure     yes
+useFlexibleCell      no
+useConstantRatio     no
+BerendsenPressure    on
+BerendsenPressureTarget 1.01325
+BerendsenPressureCompressibility 0.000046
+BerendsenPressureRelaxationTime 1000
+
+#box
+wrapAll              on
+wrapNearest          on
+PME                  on
+PMEGridSizeX         100                                                                
+PMEGridSizeY         100                                                                
+PMEGridSizeZ         100                                                                
+CellBasisVector1   -123.39524     0.00000     0.00000
+CellBasisVector2     41.13175  -116.33815     0.00000
+CellBasisVector3     41.13175    58.16907   100.75179
+
+
+
+# amber
+amber                on
+parmfile             w1kx5.top
+coordinates          w1kx5.md399out.coor
+velocities           w1kx5.md399out.vel
+outputname           w1kx5.md400out
+restartname          w1kx5.md400rst
+DCDfile              w1kx5.md400out.x
+binaryoutput         no
+binaryrestart        no
+
+outputTiming         100
+

@@ -1,0 +1,13 @@
+#!/bin/bash -l
+
+#BSUB -o KaBS_%NAME%.%J.out
+#BSUB -e KaBS_%NAME%.%J.err
+#BSUB -q %QUEUE% 
+#BSUB -W %WALLCLOCK%
+#BSUB -n %NUMPROCS%
+#BSUB -app default  
+#BSUB %MPIFLAGS%i
+
+module load %MODULES%
+
+%MPIRUN% %EXE% %PARAMS% %OUTPUT%
