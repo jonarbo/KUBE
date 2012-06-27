@@ -6,7 +6,7 @@ KaBS:
       SCRIPT: run.lsf.in
       SUBMIT: 
          COMMAND: bsub 
-         PARAMETERS: <  
+         PARAMETERS: <
    BENCH: 
       APPS:
          - name: cp2k
@@ -17,10 +17,16 @@ KaBS:
 
          - name: namd
            active: true
+           exe: namd2_mpi
+           queue: rh6_q20m 
+           mpiflags: -a openmpi
+           numprocs: 4,8,16,32,64                                
+           modules: gcc libs-extra fftw2/2.1.5-openmpi-1.4.3-sse4.2-sp namd
+           mpirun: mpirun.lsf      
            dataset: 
               - name: nucleosome_146K_atoms
                 active: true
-
+        
               - name: apoa1  
                 active: false
         
