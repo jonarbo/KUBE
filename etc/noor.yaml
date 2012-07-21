@@ -1,0 +1,90 @@
+%YAML 1.2
+---
+KaBS:
+   HOME: /home/naranjja/Devel/KaBS
+
+   OUTPUTS: results  # if the leading "/" is provided then the absolute path is taken, otherwise the relative path to HOME ([KaBS][HOME])  will be used       
+
+   BATCH:
+        # for the batch systems with a script defined, the submission command will be: <command> <parameters> <script>
+        - name: LSF
+          script: run.lsf.in # if the leading "/" is provided then the absolute path is taken, otherwise the relative path to [KaBS][HOME]/etc  will be used 
+          submit: 
+                command: bsub 
+                parameters: <  
+        # for a  manual launcher the submission command will be: <command> <parameters> <exe> <args>
+        # variables %XXX% specific to the dataset will be replaced at the moment the script is generated
+        # Other %XXX% variables can be used in the 'submit' section if they are defined..ie: %hostslistfile% 
+        - name: NONE
+          hostslistfile: hostnames      
+          submit: 
+                command: mpirun 
+                parameters: -np %NUMPROCS% -machinefile %HOSTSLISTFILE%  
+         
+   BENCH: 
+      APPS:
+         - name: cp2k
+           active: false
+
+         - name: gromacs
+           active: false
+
+         - name: namd
+           active: true
+           batch: NONE
+           # following parameters are dataset dependent... 
+           # This values will be used unless they are redefined in the "dataset" section 
+           exe: namd2_mpi
+           queue: rh6_q20m 
+           numprocs: 8,64                                
+           modules: module load gcc mpi-openmpi  libs-extra fftw2/2.1.5-openmpi-1.4.3-sse4.2-sp namd
+           launcher: mpirun.lsf  
+           launcher_flags:    
+           mpiflags: -a openmpi
+           wallclock: 00:20:00      
+           # here goes the specific dataset configuration
+           dataset: 
+              - name: namd_nucleosome146Katoms
+                active: true
+                args: nucleosome146Katoms.namd  > nucleosome.out    
+              - name: namd_apoa1  
+                active: true
+                args:  apoa1.namd   > apoa1.out
+                numprocs: 4
+                queue: rh6_q5m         
+                wallclock: 00:05:00      
+ 
+         - name: siesta
+           active: false
+
+         - name: vasp
+           active: false
+           dataset:
+                - name: Hg
+                  active: true
+
+         - name  : material studio
+           active: false     
+
+      FILESYSTEM: 
+         - gpfs:
+           active: false
+
+      MATHLIBS: 
+         - name: blas
+           active: false
+     
+         - name: lapack
+           active: false     
+
+      NETWORKS: 
+         - mpi: 
+               active: true
+
+      SYNTHETIC:
+         - hpcc:
+               active: true
+ 
+      ACCEPTANCE: 
+        active: false                        
+...
