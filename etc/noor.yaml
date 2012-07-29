@@ -7,11 +7,14 @@ KaBS:
 
    BATCH:
         # for the batch systems with a script defined, the submission command will be: <command> <parameters> <script>
+        # if parameter is '<', it might be changed by 'cat <script> | <command>'
         - name: LSF
           script: run.lsf.in # if the leading "/" is provided then the absolute path is taken, otherwise the relative path to [KaBS][HOME]/etc  will be used 
+          submittedmsg: Job <%JOBID%> is submitted to queue 
           submit: 
                 command: bsub 
-                parameters: <  
+                parameters:  <
+                
         # for a  manual launcher the submission command will be: <command> <parameters> <exe> <args>
         # variables %XXX% specific to the dataset will be replaced at the moment the script is generated
         # Other %XXX% variables can be used in the 'submit' section if they are defined..ie: %hostslistfile% 
@@ -26,34 +29,59 @@ KaBS:
          - name: cp2k
            active: false
 
+
          - name: gromacs
            active: false
 
+
          - name: namd
            active: true
-           batch: NONE
+           batch: LSF           
            # following parameters are dataset dependent... 
            # This values will be used unless they are redefined in the "dataset" section 
            exe: namd2_mpi
            queue: rh6_q20m 
-           numprocs: 8,64                                
+           numprocs: 8,64
+           tasks_per_node: 8                                
            modules: module load gcc mpi-openmpi  libs-extra fftw2/2.1.5-openmpi-1.4.3-sse4.2-sp namd
            launcher: mpirun.lsf  
            launcher_flags:    
            mpiflags: -a openmpi
-           wallclock: 00:20:00      
+           wallclock: 20
+           
            # here goes the specific dataset configuration
            dataset: 
               - name: namd_nucleosome146Katoms
-                active: true
-                args: nucleosome146Katoms.namd  > nucleosome.out    
+                active: false
+                args: nucleosome146Katoms.namd  > nucleosome.out  2>nucleosome.err
+                 
               - name: namd_apoa1  
                 active: true
-                args:  apoa1.namd   > apoa1.out
-                numprocs: 4
-                queue: rh6_q5m         
-                wallclock: 00:05:00      
- 
+                args:  apoa1.namd   > apoa1.out 2>apoa1.err
+                numprocs: 4,8,16,32               
+                analysis:  
+                   outputs: 
+                      output: apoa1.out  
+                      another_output: KaBS_%NAME%_%NUMPROCS%.out          
+                   metrics: 
+                      - name: wallclock
+                        units: secs
+                        command: cat %OUTPUT% | grep WallClock | gawk '{print $2}' 
+                   
+                      - name: days/ns
+                        units: days/ns
+                        command: cat %OUTPUT% | grep  Benchmark | gawk 'END{print $8}' 
+
+                      - name: cputime
+                        units: secs
+                        command: cat %OUTPUT% | grep CPUTime | gawk '{print $4}'   
+                     
+                      - name: memory
+                        units: MB
+                        command: cat %OUTPUT%  | grep Memory | gawk '{print $6}'
+
+
+
          - name: siesta
            active: false
 

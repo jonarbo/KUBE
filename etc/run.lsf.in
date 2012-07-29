@@ -1,13 +1,14 @@
 #!/bin/bash -l
 
-#BSUB -o KaBS_%NAME%_%NUMPROCS%.%J.out
-#BSUB -e KaBS_%NAME%_%NUMPROCS%.%J.err
+#BSUB -o KaBS_%NAME%_%NUMPROCS%.out
+#BSUB -e KaBS_%NAME%_%NUMPROCS%.err
 #BSUB -q %QUEUE% 
 #BSUB -W %WALLCLOCK%
 #BSUB -n %NUMPROCS%
-#BSUB -app default  
 #BSUB %MPIFLAGS%
+#BSUB -R span[ptile=%TASKS_PER_NODE%]
 
+module purge
 %MODULES%
 
 %LAUNCHER% %LAUNCHER_FLAGS% %EXE% %ARGS%  
