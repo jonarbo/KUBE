@@ -9,11 +9,19 @@ KaBS:
         # for the batch systems with a script defined, the submission command will be: <command> <parameters> <script>
         # if parameter is '<', it might be changed by 'cat <script> | <command>'
         - name: LSF
-          script: run.lsf.in # if the leading "/" is provided then the absolute path is taken, otherwise the relative path to [KaBS][HOME]/etc  will be used 
-          submittedmsg: Job <%JOBID%> is submitted to queue 
+          script: run.lsf.in # if the leading "/" is provided then the absolute path is taken, otherwise the relative path to [KaBS][HOME]/etc  will be used          
           submit: 
                 command: bsub 
-                parameters:  <
+                parameters:  < 
+                submittedmsg: Job <%JOBID%> is submitted to queue 
+          monitor: bjobs -u all | gawk '{print $1}' | grep %JOBID%
+          numprocs: 4,8,16,32
+          tasks_per_node: 8           
+          queue: rh6_q20m                             
+          launcher: mpirun.lsf  
+          launcher_flags:    
+          mpiflags: -a openmpi
+          wallclock: 20       
                 
         # for a  manual launcher the submission command will be: <command> <parameters> <exe> <args>
         # variables %XXX% specific to the dataset will be replaced at the moment the script is generated
@@ -29,36 +37,47 @@ KaBS:
          - name: cp2k
            active: false
 
-
          - name: gromacs
            active: false
 
-
+         - name  : material_studio
+           active: false     
+ 
          - name: namd
            active: true
-           batch: LSF           
+           batch: LSF     
            # following parameters are dataset dependent... 
            # This values will be used unless they are redefined in the "dataset" section 
-           exe: namd2_mpi
-           queue: rh6_q20m 
-           numprocs: 8,64
-           tasks_per_node: 8                                
-           modules: module load gcc mpi-openmpi  libs-extra fftw2/2.1.5-openmpi-1.4.3-sse4.2-sp namd
-           launcher: mpirun.lsf  
-           launcher_flags:    
-           mpiflags: -a openmpi
-           wallclock: 20
-           
+           exe: namd2_mpi                       
+           modules: module load gcc mpi-openmpi  libs-extra fftw2/2.1.5-openmpi-1.4.3-sse4.2-sp namd    
            # here goes the specific dataset configuration
            dataset: 
               - name: namd_nucleosome146Katoms
-                active: false
-                args: nucleosome146Katoms.namd  > nucleosome.out  2>nucleosome.err
-                 
-              - name: namd_apoa1  
                 active: true
-                args:  apoa1.namd   > apoa1.out 2>apoa1.err
-                numprocs: 4,8,16,32               
+                args: nucleosome146Katoms.namd  > nucleosome.out  2>nucleosome.err
+                analysis:  
+                   outputs: 
+                      output: nucleosome.out                      
+                   metrics: 
+                      - name: wallclock
+                        units: secs
+                        command: cat %OUTPUT% | grep WallClock | gawk '{print $2}' 
+                   
+                      - name: days/ns
+                        units: days/ns
+                        command: cat %OUTPUT% | grep  Benchmark | gawk 'END{print $8}' 
+
+                      - name: cputime
+                        units: secs
+                        command: cat %OUTPUT% | grep CPUTime | gawk '{print $4}'   
+                     
+                      - name: memory
+                        units: MB
+                        command: cat %OUTPUT%  | grep Memory | gawk '{print $6}'
+ 
+              - name: namd_apoa1  
+                active: false
+                args:  apoa1.namd   > apoa1.out 2>apoa1.err                        
                 analysis:  
                    outputs: 
                       output: apoa1.out  
@@ -80,22 +99,46 @@ KaBS:
                         units: MB
                         command: cat %OUTPUT%  | grep Memory | gawk '{print $6}'
 
-
-
-         - name: siesta
-           active: false
-
          - name: vasp
            active: false
+           batch: LSF
+           exe: vasp         
+           modules: module load gcc mpi-openmpi vasp
            dataset:
-                - name: Hg
-                  active: true
+              - name: vasp_Hg
+                active: true
+                args: 
+                analysis:  
+                   outputs: 
+                      outcar: OUTCAR
+                      oszicar: OSZICAR
+                      outcar_ref:  OUTCAR.ref
+                      oszicar_ref: OSZICAR.ref
+                   metrics: 
+                      - name: wallclock
+                        units: secs
+                        command: $cat %OUTCAR% | grep "Elapsed time" | gawk '{print $4}' 
+                  
+         - name: siesta
+           active: false
+           batch: LSF
+           exe: siesta
+           modules: module load gcc mpi-openmpi blas blacs  lapack scalapack siesta
+           dataset:
+              - name: siesta_test
+                active: true
+                args: 
+                analysis:  
+                   outputs: 
+                      output: 
+                   metrics: 
+                      - name: wallclock
+                        units: secs
+                        command: cat %OUTPUT% | grep WallClock | gawk '{print $2}'                   
 
-         - name  : material studio
-           active: false     
 
       FILESYSTEM: 
-         - gpfs:
+         - name: gpfs
            active: false
 
       MATHLIBS: 
@@ -106,13 +149,63 @@ KaBS:
            active: false     
 
       NETWORKS: 
-         - mpi: 
-               active: true
+         - name: mpi
+           batch: LSF         
+           active: true
+           test:
+                - name: mpi_imb            
+                  active: true  
+                  exe: bin/IMB-MPI1 # Full path, otherwise relative to the current dir
+                  inputs: # list of  files that will be copied to the run directory
+                  modules:  module load gcc mpi-openmpi
+                  args:  > imb.output                     
+                  analysis:
+                        outputs: 
+                                output: imb.output
+                        metrics:
+                                - name: pingpong_BW
+                                  units: MB/secs
+                                  command: cat %OUTPUT% | grep -A28 "Benchmarking PingPong" |  gawk '$1 ~ /[0-9]/'  | gawk 'BEGIN{sum=0}{if ($2>=32768) sum=sum+$4  }END{ print sum/8}'
+      
+                                - name: pingping_BW
+                                  units: MB/secs
+                                  command: cat %OUTPUT% | grep -A28 "Benchmarking PingPing" |  gawk '$1 ~ /[0-9]/'  | gawk 'BEGIN{sum=0}{if ($1>=32768) sum=sum+$4  }END{ print sum/8}'       
+
+                                - name: sendrecv_BW
+                                  units: MB/secs
+                                  command: cat %OUTPUT% | grep -B10  "Benchmarking Exchange" | head | gawk 'BEGIN{sum=0}{if ($1>=32768) sum=sum+$6  }END{ print sum/8}'
+
+                                - name: exchange_BW
+                                  units: MB/secs
+                                  command: cat %OUTPUT% | grep -B10  "Benchmarking Allreduce" | head | gawk 'BEGIN{sum=0}{if ($1>=32768) sum=sum+$6  }END{ print sum/8}'
+ 
+                                - name: allreduce_avg_t
+                                  units: usecs
+                                  command: cat %OUTPUT% | grep -B10  "Benchmarking Reduce" | head | gawk 'BEGIN{sum=0}{if ($1>=32768) sum=sum+$5  }END{ print sum/8}'
+ 
+                                - name: alltoall_avg_t
+                                  units: usecs
+                                  command: cat %OUTPUT% | grep -B10  "Benchmarking Bcast" | head | gawk 'BEGIN{sum=0}{if ($1>=32768) sum=sum+$5  }END{ print sum/8}'
+ 
+                                - name: bcast 
+                                  units: usecs
+                                  command: cat %OUTPUT% | grep -B10  "Benchmarking Barrier" | head | gawk 'BEGIN{sum=0}{if ($1>=32768) sum=sum+$5  }END{ print sum/8}'
+
 
       SYNTHETIC:
-         - hpcc:
-               active: true
- 
+         - name: hpcc_atlas
+           active: true
+           batch: LSF         
+           exe: hpcc 
+           args: 
+           modules: module load gcc atlas/3.8.4-sse3 mpi-openmpi   
+           analysis:   
+                output:
+                        hpccout: hpccoutf.txt
+                metrics:
+                             
+
+
       ACCEPTANCE: 
         active: false                        
 ...

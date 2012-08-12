@@ -87,6 +87,14 @@ for nbatch in batchs:
 			sys.exit(1)	
 
 
+if (yaml_conf['KaBS']['BENCH'].keys().count('APPS') == 0) or \
+	(yaml_conf['KaBS']['BENCH'].keys().count('FILESYSTEM') == 0) or \
+	(yaml_conf['KaBS']['BENCH'].keys().count('MATHLIBS') == 0) or \
+	(yaml_conf['KaBS']['BENCH'].keys().count('NETWORKS') == 0) or \
+	(yaml_conf['KaBS']['BENCH'].keys().count('SYNTHETIC') == 0) or \
+	(yaml_conf['KaBS']['BENCH'].keys().count('ACCEPTANCE') == 0):			
+	print "Config file error: 'APPS','FILESYSTEM','MATHLIBS','NETWORKS','SYNTHETIC','ACCEPTANCE' tags are mandatory inside BENCH" 
+	sys.exit(1)	
 apps = yaml_conf['KaBS']['BENCH']['APPS'] # Array of dictionaries with apps info: active, exe, name, etc...
 
 output_dir = yaml_conf['KaBS']['OUTPUTS']
@@ -96,41 +104,56 @@ if re.match("[^/]",output_dir):
 for app in apps:
 	if  app.keys().count('name')==0 or \
 		app.keys().count('active')==0:
-		print "Config file error: 'active' and 'name' are mandatory fields within an APP: "
-		sys.exit(1)
+		print "Config file error: 'active' and 'name' are mandatory fields within an APP.\nSkipping this entry"
+		apps.remove(app)
 	else:
-		if app['active'] and app.keys().count('dataset')==0:
-			print "Config file error: 'dataset' field required for an active APP: " + app['name']
-			sys.exit(1)
-
+		if app['active'] and ( app.keys().count('dataset')==0 or app.keys().count('batch')==0 or app.keys().count('exe')==0  ):
+			print "Config file error: 'dataset', 'exe' and 'batch' fields are required for any active APP: " + app['name'] + ".\nSkipping this entry"
+			apps.remove(app)
 i_apps = [ app['name'] for app in apps if not app['active'] ]	# List with the name of the inactive apps
 a_apps =dict( [ (app['name'],app['dataset']) for app in apps if app['active'] ]) # Dictionary Name->Array of datasets  of active apps
+
 # update a_apps and remove inactive datasets... also if there is no active dataset remove app from the list of active apps
 for napp in a_apps.keys():	
 		for dataset in a_apps[napp]:
-			if dataset['active'] != True:
+			if dataset.keys().count('name')==0 or dataset.keys().count('active')==0 or dataset.keys().count('analysis')==0:
+				print "Config file error: 'name', 'active' and 'analysis' fields are required for any dataset in app: " + napp + ".\nSkipping this dataset"
+				a_apps[napp].remove(dataset)
+			elif dataset['active'] != True:
 				a_apps[napp].remove(dataset)
 		if len( a_apps[napp] ) == 0:
 			del(a_apps[napp])
+
+# populate apps with the batch parameters if they are not already set in the app:
+for appname in a_apps.keys():	
+	for a in apps:	
+		if a['name'] == appname:	 			
+			for batch in batchs: 
+				if batch['name'] == a['batch']:
+					for key in batch.keys():
+						if key!="name" and key!="script" and key!="submittedmsg" and key!="submit" and a.keys().count(key)==0 :
+							a[key] = batch[key]				
+					break # step out the batch loop
+			break # step out apps loop
 # populate a_apps -> datasets with the app parameters if they are not already set in the dataset:			
 for appname in a_apps.keys():	
 	for dataset in a_apps[appname]:
 		for a in apps:	
  			if a['name'] == appname:	
-  				if  a.keys().count('batch')==0 or \
- 			 		a.keys().count('exe')==0:
- 			 		print "Config file error: 'batch' and 'exe' are mandatory fields within an active APP: " + appname
- 			 		sys.exit(1)
  				for sk in a.keys():
 					if sk=="batch": # Force the dataset to use always the batch system defined  for the app
 									# the 'batch' parameter is global to the app, not dataset specific 
 						dataset[sk] = a[sk]
-					elif  dataset.keys().count(sk)==0 and sk!="name" and sk!="dataset" and sk!="active" :
+					elif  dataset.keys().count(sk)==0 and sk!="name" and sk!="dataset" and sk!="active" and sk!="analysis" :
 						if a[sk] != None:
 							dataset[sk] = a[sk] 
 						else:
-							dataset[sk] = "" 
-							
+							dataset[sk] = "" 		
+												
+				if dataset.keys().count('numprocs')==0 or dataset.keys().count('tasks_per_node')==0:
+					print "Config file error: Dataset of " + appname + " found without 'numprocs' and/or 'tasks_per_node' defined. This tags are mandatory!!!\nPlease revise your configuration file" 
+					sys.exit(1)	
+				break # step out apps loop
 									
 # End setting global variables
 ########################################################################################
@@ -159,9 +182,6 @@ for appname in a_apps.keys():
 					else:
 						# Do nothing ...
 						pass
-
-				
-									
 	
 # Replace inline variables in the ['analysis']['metrics'] section inside each dataset
 for appname in a_apps.keys():	
