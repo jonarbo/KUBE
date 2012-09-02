@@ -120,21 +120,31 @@ KaBS:
                         command: $cat %OUTCAR% | grep "Elapsed time" | gawk '{print $4}' 
                   
          - name: siesta
-           active: false
+           active: true
            batch: LSF
            exe: siesta
            modules: module load gcc mpi-openmpi blas blacs  lapack scalapack siesta
            dataset:
               - name: siesta_test
                 active: true
-                args: 
+                args: < fen.fdf  > output.txt
                 analysis:  
                    outputs: 
-                      output: 
+                      clock: CLOCK
+                      output: output.txt
+                      fenxml: fen.xml
+                      feneig: fen.EIG
                    metrics: 
                       - name: wallclock
                         units: secs
-                        command: cat %OUTPUT% | grep WallClock | gawk '{print $2}'                   
+                        command: cat %CLOCK% | grep "End of run" | gawk '{print $4}'
+                      - name: AvgMem # Avg mem per node
+                        units: MB
+                        command: cat %OUTPUT% | grep "Node" | gawk '{print $10}' |  gawk 'BEGIN{sum=0 ; c=0}{ sum=sum+$1 ; c=c+1  }END{ print sum/c}'  
+                      - name: FinalEnergy
+                        units: eV
+                        command:  cat %OUTPUT%  | grep "Total =" | gawk '{print $4}' 
+                        
 
 
       FILESYSTEM: 
@@ -152,21 +162,48 @@ KaBS:
          - name: mpi
            batch: LSF         
            active: true
-           test:
-                - name: mpi_imb            
+           modules:  module load gcc mpi-openmpi    
+           numprocs: 32              
+           dataset:           
+                - name: mpi_io_test # MPI-IO on Scratch N procs to 1 file
+                  active: true
+                  exe: ./fs_test.x
+                  # 10 objects of 1GB to write by each proc 
+                  args:  -type 2 –strided 1 -nobj 10 -size 1073741824  -target /scratch/mpiio_testfile -deletefile -touch 2 -check 2
+                  analysis:
+                        outputs:
+                                output: KaBS_%NAME%_%NUMPROCS%.out 
+                        metrics:
+                                - name: ""
+                                  units: ""
+                                  command: ""
+
+                - name: skampi-5.0.4-r0355
+                  active: true
+                  exe: ./skampi
+                  dependencies: ski/skampi_coll.ski
+                  args:  -i ski/skampi_coll.ski  -o skaoutf.txt
+                  analysis:
+                        outputs:
+                                output: skaoutf.txt                                              
+                        metrics:
+                                - name: ""
+                                  units: ""
+                                  command: ""                      
+                        
+                - name: imb_3.2.3                            
                   active: true  
-                  exe: bin/IMB-MPI1 # Full path, otherwise relative to the current dir
-                  inputs: # list of  files that will be copied to the run directory
-                  modules:  module load gcc mpi-openmpi
-                  args:  > imb.output                     
+                  exe: bin/IMB-MPI1 # Full path or  Relative to the current dir
+                  dependencies:  #comma separated list of  files that will be copied to the run directory ... always relative to the 'source' dir
+                  args: 1>imb.output                     
                   analysis:
                         outputs: 
                                 output: imb.output
                         metrics:
                                 - name: pingpong_BW
                                   units: MB/secs
-                                  command: cat %OUTPUT% | grep -A28 "Benchmarking PingPong" |  gawk '$1 ~ /[0-9]/'  | gawk 'BEGIN{sum=0}{if ($2>=32768) sum=sum+$4  }END{ print sum/8}'
-      
+                                  command: cat %OUTPUT% | grep -A28 "Benchmarking PingPong" |  gawk '$1 ~ /[0-9]/'  | gawk 'BEGIN{sum=0}{if ($1>=32768) sum=sum+$4  }END{ print sum/8}'
+
                                 - name: pingping_BW
                                   units: MB/secs
                                   command: cat %OUTPUT% | grep -A28 "Benchmarking PingPing" |  gawk '$1 ~ /[0-9]/'  | gawk 'BEGIN{sum=0}{if ($1>=32768) sum=sum+$4  }END{ print sum/8}'       
@@ -187,24 +224,48 @@ KaBS:
                                   units: usecs
                                   command: cat %OUTPUT% | grep -B10  "Benchmarking Bcast" | head | gawk 'BEGIN{sum=0}{if ($1>=32768) sum=sum+$5  }END{ print sum/8}'
  
-                                - name: bcast 
+                                - name: bcast_avg_t 
                                   units: usecs
                                   command: cat %OUTPUT% | grep -B10  "Benchmarking Barrier" | head | gawk 'BEGIN{sum=0}{if ($1>=32768) sum=sum+$5  }END{ print sum/8}'
 
 
       SYNTHETIC:
-         - name: hpcc_atlas
+         - name: hpcc
            active: true
            batch: LSF         
            exe: hpcc 
            args: 
            modules: module load gcc atlas/3.8.4-sse3 mpi-openmpi   
-           analysis:   
-                output:
-                        hpccout: hpccoutf.txt
-                metrics:
-                             
-
+           dependencies: hpccinf.txt
+           numprocs: 128
+           dataset:
+                 - name: with_atlas
+                   active: true
+                   analysis:   
+                        outputs:
+                                hpccout: hpccoutf.txt
+                        metrics:
+                                - name: Procs
+                                  units: ""
+                                  command: cat  %HPCCOUT% | grep CommWorldProcs | gawk -F "=" '{print $2}'
+                                - name: HPL
+                                  units: TFlops
+                                  command: cat  %HPCCOUT% | grep HPL_Tflops | gawk -F "=" '{print $2}'
+                                - name: Single_DGEMM
+                                  units: GFlops
+                                  command: cat  %HPCCOUT% | grep  SingleDGEMM_Gflops| gawk -F "=" '{print $2}'
+                                - name: Star_DGEMM
+                                  units: GFlops
+                                  command: cat  %HPCCOUT% | grep  StarDGEMM_Gflops| gawk -F "=" '{print $2}'
+#                                - name: STREAM
+#                                  units: GB/s
+#                                  command: ""
+                                - name: PTRANS
+                                  units: GBs
+                                  command:  cat  %HPCCOUT% | grep  PTRANS_GBs | gawk -F "=" '{print $2}'
+                                - name: FFT
+                                  units: GFlops
+                                  command: cat  %HPCCOUT% | grep  MPIFFT_Gflops | gawk -F "=" '{print $2}'
 
       ACCEPTANCE: 
         active: false                        
