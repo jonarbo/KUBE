@@ -1,4 +1,5 @@
 #!/usr/bin/python
+# coding: utf-8
 
 # import system issues
 import sys
@@ -177,7 +178,8 @@ class KABS:
 						str2find[nkey]= "%"+ nkey.upper() +"%"		
 				for sstr in str2find.keys():
 					reple = re.compile( str2find[sstr] )	
-					ndatasetsstr = re.sub(r'\s', '', unicode(dataset[sstr]) )	# security ... just remove all white spaces		
+					ndatasetsstr = re.sub(r'\s', '', str(dataset[sstr]) )	# security ... just remove all white spaces		
+					#ndatasetsstr = re.sub(r'\s', '', unicode(dataset[sstr]) )	# security ... just remove all white spaces		
 					if 	len(ndatasetsstr.split(','))<2 : # there is not a comma separated list:
 						for outpkey in dataset['analysis']['outputs'].keys():
 							dataset['analysis']['outputs'][outpkey] = reple.sub(ndatasetsstr,dataset['analysis']['outputs'][outpkey])		
@@ -219,13 +221,11 @@ class KABS:
 			for app in self.apps:
 				if  app.keys().count('name')==0 or \
 					app.keys().count('active')==0:
-					#print "Config file error: 'active' and 'name' are mandatory fields within an APP ... Skipping this entry"
 					self.log.error("Config file error","'active' and 'name' are mandatory fields within an APP ... Skipping this entry")
 					self.apps.remove(app)
 					repeat = True
 				else:
 					if app['active'] and ( app.keys().count('dataset')==0 or app.keys().count('batch')==0 or app.keys().count('exe')==0  ):
-						#print "Config file error: 'dataset', 'exe' and 'batch' fields are required for any active APP: " + app['name'] + " ... Skipping this entry"
 						self.log.error("Config file Error"," 'dataset', 'exe' and 'batch' fields are required for any active APP: " + self.log.bold(app['name']) + " ... Skipping this entry")
 						self.apps.remove(app)
 						repeat = True		
@@ -244,7 +244,6 @@ class KABS:
 					repeat = False
 					for dataset in self.a_apps[napp]:
 						if dataset.keys().count('name')==0 or dataset.keys().count('active')==0:
-							#print "Config file error: 'name' and 'active' fields are required for any dataset in app: " + napp + ".\nSkipping this dataset"
 							self.log.error("Config file error","'name' and 'active' fields are required for any dataset in app: " + self.log.bold(napp) + " ... Skipping this dataset")
 							self.a_apps[napp].remove(dataset)
 							repeat = True
@@ -252,7 +251,6 @@ class KABS:
 							self.a_apps[napp].remove(dataset)
 							repeat = True
 						elif dataset.keys().count('analysis')==0:
-							#print "Config file error: 'analysis' field is required for any active dataset in app: " + napp + ".\nSkipping this dataset"
 							self.log.error("Config file error"," 'analysis' field is required for any active dataset in app: " + self.log.bold(napp) + " ... Skipping this dataset")
 							self.a_apps[napp].remove(dataset)
 							repeat = True
@@ -289,7 +287,6 @@ class KABS:
 									dataset[sk] = "" 		
 														
 						if dataset.keys().count('numprocs')==0 or dataset.keys().count('tasks_per_node')==0:
-							#print "Config file error: Dataset of " + appname + " found without 'numprocs' and/or 'tasks_per_node' defined. This tags are mandatory!!!\nPlease revise your configuration file" 
 							self.log.error("Config file error"," Dataset of " + self.log.bold(appname) + " found without 'numprocs' and/or 'tasks_per_node' defined. This tags are mandatory!!!") 
 							self.log.error("Please revise your configuration file !!!")
 							sys.exit(1)	
@@ -402,14 +399,12 @@ class KABS:
 		"""Parse the yaml_conf structure and reads the configuration variables needed. Also do some basic correctness and sanity check"""	
 		# some basic error correctness
 		if yaml_conf.keys().count('KaBS') ==0:
-			#print "Config file error: KaBS head tag is not defined" 
 			self.log.error("Config file error", "KaBS head tag is not defined") 
 			sys.exit(1)	
 		if yaml_conf['KaBS'].keys().count("HOME") == 0 or \
 		   yaml_conf['KaBS'].keys().count("OUTPUTS") == 0 or \
 		   yaml_conf['KaBS'].keys().count("BATCH") == 0 or \
 		   yaml_conf['KaBS'].keys().count("BENCH") == 0:
-			#print "Config file error: HOME, OUTPUTS, BATCH and BENCH must be defined" 
 			self.log.error("Config file error","HOME, OUTPUTS, BATCH and BENCH must be defined")
 			sys.exit(1)			
 
@@ -419,7 +414,6 @@ class KABS:
 		# set home
 		self.home = yaml_conf['KaBS']['HOME']
 		if self.home == None: 
-			#print "Config file error: HOME must be defined" 
 			self.log.error("Config file error","HOME must be defined")
 			sys.exit(1) 
 
@@ -431,34 +425,28 @@ class KABS:
 		# set batchs
 		self.batchs = yaml_conf['KaBS']['BATCH']
 		if self.batchs==None:
-			#print "Config file error: at least one BATCH must be defined" 
 			self.log.error("Config file error","at least one BATCH must be defined")
 			sys.exit(1)	
 		# set absolute path to the scripts and do some error check
 		for nbatch in self.batchs:
 			if nbatch.keys().count('name')==0 or nbatch.keys().count('submit')==0:
-				#print "Config file error: 'name' and 'submit' tags are mandatory in the BATCH" 
 				self.log.error("Config file error"," 'name' and 'submit' tags are mandatory in the BATCH" )
 				sys.exit(1)
 			if nbatch['submit'] == None : 
 				self.log.error("Config file error","'submit' tag in one of your BATCHs is empty")
-				#print "Config file error: 'submit' tag in one of your BATCHs is empty" 				
 				sys.exit(1)	
-			if  str(nbatch['name']) != "NONE" and nbatch['name']!=None:
+			if  nbatch['name'] != "NONE" and nbatch['name']!=None:
 				if  nbatch.keys().count('script')==0:
-					#print "Config file error: 'script' tag is mandatory in an a BATCH unless you name it as 'NONE'" 
 					self.log.error("Config file error"," 'script' tag is mandatory in an a BATCH unless you name it as 'NONE'")
 					sys.exit(1)
 				if nbatch['script']!=None:
 					if re.match("[^/]",nbatch['script']):
 						nbatch['script'] = self.home + "/etc/" + nbatch['script']
 				else:
-					#print "Config file error: Missing 'script' in one of your non 'NONE' BATCHs" 
 					self.log.error("Config file error","Missing 'script' in one of your non 'NONE' BATCHs")
 					sys.exit(1)			
 			else:
 				if nbatch['name']==None:
-					#print "Config file error: Missing 'name' in one of your BATCHs" 
 					self.log.error("Config file error","Missing 'name' in one of your BATCHs")
 					sys.exit(1)	
 		
@@ -469,7 +457,6 @@ class KABS:
 			(yaml_conf['KaBS']['BENCH'].keys().count('NETWORKS') == 0) or \
 			(yaml_conf['KaBS']['BENCH'].keys().count('SYNTHETIC') == 0) or \
 			(yaml_conf['KaBS']['BENCH'].keys().count('ACCEPTANCE') == 0):		
-			#print "Config file error: 'APPS','FILESYSTEM','MATHLIBS','NETWORKS','SYNTHETIC','ACCEPTANCE' tags are mandatory inside BENCH" 
 			self.log.error("Config file error","'APPS','FILESYSTEM','MATHLIBS','NETWORKS','SYNTHETIC','ACCEPTANCE' tags are mandatory inside BENCH")
 			sys.exit(1)	
 			
@@ -517,8 +504,10 @@ class KABS:
 			str2find = "%("+ str(litem).upper() +")%"
 			prog = re.compile(str2find);
 			if litem != 'numprocs':
+					#data = prog.sub( unicode(whichdataset[litem]) ,data)	
 					data = prog.sub( str(whichdataset[litem]) ,data)	
 			else:
+				#data = prog.sub( unicode(p) ,data)		
 				data = prog.sub( str(p) ,data)		
 				
 		return data	
@@ -530,32 +519,25 @@ class KABS:
 		""" Prints out configuration information for a specific app or for All apps
 		"""
 		if which==None: # means ALL
-			#print "\t"+KABS.L0+"Inactive Apps:" + KABS.LE,
 			Log.Level = 1
 			self.log.log("Inactive Apps", str(self.i_apps) )
-			#print self.i_apps
-			#print "\t"+KABS.L0+"Active Apps:" + KABS.LE 
 			Log.Level = 1
 			self.log.log("Active Apps"," " )
 			for k in self.a_apps.keys():
-				#print "\t\t"+ KABS.L1+ k  + KABS.LE + " with:"
 				Log.Level = 2
 				#self.log.data(k,"with ..." )
 				self.log.log(k,"with ..." )
 				for l in range(len(self.a_apps[k])):
-					#print "\t\t\tdataset: "+KABS.L1 + str( self.a_apps[k][l]['name']) + KABS.LE 
 					Log.Level =3
 					#self.log.data("dataset",str( self.a_apps[k][l]['name']))
 					self.log.log("dataset",str( self.a_apps[k][l]['name']))
 					for litem in  self.a_apps[k][l]:
 						if litem != 'name' and litem != 'analysis':
-							#print "\t\t\t\t"+litem +": "+KABS.L1 + str( self.a_apps[k][l][litem]) + KABS.LE 
 							Log.Level = 4
 							#self.log.data(litem ,str( self.a_apps[k][l][litem])  )
 							self.log.log(litem ,str( self.a_apps[k][l][litem])  )
 		else:
 			if self.a_apps.keys().count(which) == 0:
-				#print "Application " + which  + " not found or not active"
 				self.log.warning("Warning","Application " + self.log.bold(which)  + " not found or not active")
 			else:
 				for k in self.a_apps.keys():
@@ -569,15 +551,12 @@ class KABS:
 						break;	
 	
 	def __printMathlibInfo(self):
-		Log.Level = 1
-		self.log.log("Math Libraries:")
+		Log.Level = 1	
 		#self.__printBaseInfo( self.a_mathlibs, self.mathlibs, which)
 
 				
 	def __printFSInfo(self):
-		#print "\t"+KABS.L0+"Filesysytems:"+KABS.LE
 		Log.Level = 1
-		self.log.log("Filesystems:")
 		#self.__printBaseInfo( self.a_filesys, self.filesys, which)
 
 	
@@ -585,7 +564,6 @@ class KABS:
 		""" Prints out configuration information for a specific Synthetic benchmarks or for all synthetic benchmarks
 		"""
 		Log.Level = 1
-		self.log.log("Synthetic:")
 		self.__printBaseInfo( self.a_synths, self.synths, which)
 
 
@@ -593,7 +571,6 @@ class KABS:
 		""" Prints out configuration information for a specific app or for All apps
 		"""
 		Log.Level = 1
-		self.log.log("Networks:")
 		self.__printBaseInfo( self.a_nets, self.nets, which)
 		
 		
@@ -613,7 +590,6 @@ class KABS:
 							self.log.log(litem ,str( who[k][l][litem])  )
 		else:
 			if who.keys().count(which) == 0:
-				#print "Application " + which  + " not found or not active"
 				self.log.warning("Warning","Element " + self.log.bold(which)  + " not found or not active")
 			else:
 				for k in who.keys():
@@ -649,24 +625,16 @@ class KABS:
 		submit_params = mybatch['submit']['parameters']	
 		if  mybatch == None or mybatch['name'] == "NONE":
 			# No batch system found .... 
-			#print "No batch system specified for app: " + KABS.L1 + which + KABS.LE
 			self.log.warning("Warning","No batch system specified for " + self.log.bold(which) )
-			#print "Submission command: " 
 			self.log.log("Submission command:")
 			Log.Level = 1
 			#self.log.data(submit_cmd +" " + submit_params )
 			self.log.log(submit_cmd +" " + submit_params )
-			#print "\t" + submit_cmd +" " + submit_params 	
 		else:
 			submit_script = mybatch['script']
-			#print "Using "  + KABS.L1 + mybatch['name'] + KABS.LE + " for app: " + KABS.L1 + which + KABS.LE
-			#self.log.plain("Using " + self.log.bold(str(mybatch['name'])) + " for " + self.log.bold(which) )
 			self.log.plain("Using " + self.log.bold(str(mybatch['name']))+ " batch system" )
-			#print "Submission command: "
 			self.log.log("Submission command:")
 			Log.Level = 1
-			#print "\t" + submit_cmd +" " + submit_params # + " " + submit_script					
-			#self.log.data(submit_cmd +" " + submit_params )
 			self.log.log(submit_cmd +" " + submit_params )
 		print "\n"
 	
@@ -730,7 +698,6 @@ class KABS:
 								break		
 		u = runs			
 		if len(u) == 0:
-			#print "No new runs to analize"
 			self.log.plain("No new runs to analize")	
 			return
 		# create analysis dir for each  run
@@ -757,7 +724,6 @@ class KABS:
 						if os.path.isfile(rundir + "/" + i + "/" + dataset['analysis']['outputs'][outp]) :					
 							shutil.copy( rundir + "/" + i + "/" + dataset['analysis']['outputs'][outp] , "./")
 						else:
-							#print "Warning: File " + KABS.L1 +  rundir + "/" + i + "/" + dataset['analysis']['outputs'][outp] + KABS.LE + " Does not exist.\nAnalysis not completed!!!"
 							self.log.waring("Warning","File " + self.log.bold( rundir + "/" + i + "/" + str(dataset['analysis']['outputs'][outp]) ) + " Does not exist.")
 							self.log.error("Analysis not completed!!!")
 							failed = True
@@ -766,7 +732,6 @@ class KABS:
 					if os.path.isfile(rundir + "/" + i + "/" + dataset['analysis']['outputs'][outp]) :					
 						shutil.copy( rundir + "/" + i + "/" + dataset['analysis']['outputs'][outp] , "./")
 					else:
-						#print "Warning: File " + KABS.L1 +  rundir + "/" + i + "/" + dataset['analysis']['outputs'][outp] + KABS.LE + " Does not exist.\nAnalysis not completed!!!"
 						self.log.warning("Warning","File " + self.log.bold( rundir + "/" + i + "/" + str(dataset['analysis']['outputs'][outp]) ) + " Does not exist.")
 						self.log.error("Analysis not completed!!!")
 						failed = True
@@ -806,7 +771,6 @@ class KABS:
 		analysisd = self.output_dir + "/analysis/synthetic/"+ name + "/"
 		runsd = self.output_dir + "/runs/synthetic/"+ name + "/"
 		if not os.path.exists(runsd):
-			#print "Can't find any completed run for this app: " + KABS.L1+ name + KABS.LE
 			self.log.error("Can't find any completed run for this synthetic: " + self.log.bold(name) )
 			sys.exit(1)
 		if not os.path.exists(analysisd):
@@ -823,7 +787,6 @@ class KABS:
 		analysisd = self.output_dir + "/analysis/networks/"+ name + "/"
 		runsd = self.output_dir + "/runs/networks/"+ name + "/"
 		if not os.path.exists(runsd):
-			#print "Can't find any completed run for this app: " + KABS.L1+ name + KABS.LE
 			self.log.error("Can't find any completed run for this network: " + self.log.bold(name) )
 			sys.exit(1)
 		if not os.path.exists(analysisd):
@@ -845,7 +808,6 @@ class KABS:
 		analysisd = self.output_dir + "/analysis/apps/"+ name + "/"
 		runsd = self.output_dir + "/runs/apps/"+ name + "/"
 		if not os.path.exists(runsd):
-			#print "Can't find any completed run for this app: " + KABS.L1+ name + KABS.LE
 			self.log.error("Can't find any completed run for this app: " + self.log.bold(name) )
 			sys.exit(1)
 		if not os.path.exists(analysisd):
@@ -894,7 +856,7 @@ class KABS:
 				files = dataset['dependencies']
 			inputs = str(files).split(',')
 			for input in inputs:
-				if input != 'None' :
+				if input != 'None' and input != "" and input != "u''":
 					self.log.plain( "Copying dependency file: "+ self.log.bold( str(input) )  + " into run directory")
 					# input is always relative to the 'source' directory
 					if not os.path.exists( os.path.dirname("./" + dataset['name'] + '/'+ input )) :
@@ -940,7 +902,6 @@ class KABS:
 			# change dir name to identify as an unique outcome	
 	
 			if os.path.isdir( run_id ):
-				#print "\n\tDirectory: " + KABS.L1+  run_id  + KABS.LE +" already exists" + ".\n\tTrying to run the same dataset in less than a second."
 				print "\n"
 				self.log.plain("Directory: " +   self.log.bold(run_id)  +" already exists" + ". Trying to run the same dataset in less than a second.")
 				print "\tDelaying a second..." ,
@@ -958,8 +919,8 @@ class KABS:
 			shutil.copytree(  dataset['name'] , run_id )		
 	
 			# get the script or the command to run it
-			data = self.__getBatchScript(dataset,p)
-	
+			data = self.__getBatchScript(dataset,p) 
+			
 			rpath = t + run_id 
 			os.chdir(rpath)  
 				
@@ -969,7 +930,8 @@ class KABS:
 				# No batch system found .... 
 				syscall( data )
 			else:
-				o = open( "run.batch","w")
+				o = open( "run.batch","w")		
+								
 				o.write(data)
 				o.flush()
 				o.close		
@@ -993,8 +955,6 @@ class KABS:
 					syscall( cmd )
 					print "... Submitted"
 				else:
-					#print KABS.L1 + "\n\tWarning: "+ KABS.LE + "It seems there was a problem while submitting this job.\n\tPlease read the following error message:"
-					#print "\t\t" + KABS.L1  +  err + KABS.LE	
 					self.log.error("Warning","It seems there was a problem while submitting this job.")
 					Log.Level = 1
 					self.log.warning("Please read the following error message:")
@@ -1020,7 +980,6 @@ class KABS:
 			self.log.plain( "Dataset: " +  self.log.bold(dataset['name'] ) )
 			s = source + dataset['name']+".tgz" 	
 			if not os.path.exists(s):
-				#print "Dataset Error: Could not find: " + s
 				self.log.error("Dataset Error:","Could not find: " + s)
 				sys.exit(1)        	
 			t = target+"runs/apps/"+whichapp+"/"+dataset['name'] +"/"
@@ -1052,7 +1011,6 @@ class KABS:
 		"""
 		
 		if not template or not target:
-			#print "Error: Wrong arguments. Two arguments needed.\n1.- the path to the base analysis dir\n2.- the path to the dir containing the analysis dirs to compare"
 			self.log.error("Wrong arguments. Two arguments needed.\n1.- the path to the base analysis dir\n2.- the path to the dir containing the analysis dirs to compare")
 			sys.exit(1)
 		
@@ -1081,7 +1039,6 @@ class KABS:
 			
 		print "Reading data from target analysis:"
 		if (os.path.isfile(target+"/analysis.raw")):
-			#print "\t" + KABS.L1 + target + KABS.LE
 			Log.Level = 1
 			self.log.plain( self.log.bold(target ))
 			if not os.path.exists(target+"/analysis.raw"):
@@ -1100,7 +1057,6 @@ class KABS:
 		u = os.listdir(target)
 		for file in u:
 			if os.path.isfile(target + "/" + file + "/analysis.raw"):
-				#print "\t" + KABS.L1 + target + "/"+ file + KABS.LE
 				Log.Level = 1
 				self.log.plain( self.log.bold(target + "/"+ file ) )
 				
@@ -1261,10 +1217,8 @@ set grid polar
 			self.log.plain("********************************************")			
 			self.log.plain( "***  Running KaBS for selected App:      ***")
 			self.log.plain("********************************************")
-			#print  KABS.L1+ name + KABS.LE + "\n"
 			self.log.log(name)
 			if self.a_apps.keys().count(name) == 0:
-				#print "Application " +  KABS.L1+ name + KABS.LE + " not found or not active"	
 				self.log.warning("Warning","Application " +  self.log.bold(name) + " not found or not active"	)
 				return		
 			self.__runApp(name)	
@@ -1314,27 +1268,18 @@ set grid polar
 			
 		if item == None: # means show the global configuration	
 	
-			#print KABS.L0 + "KaBS Home:" + KABS.LE + self.home
 			self.log.log("KaBS Home",self.home )
-			#print KABS.L0 + "KaBS Otputs: " + KABS.LE + self.output_dir
 			self.log.log("KaBS Outputs",self.output_dir )
-			#print KABS.L0 + "KaBS Batch Systems: " + KABS.LE
 			self.log.log("KaBS Batch Systems:" )
 						
 			for nbatch in self.batchs:
-				#print "\t" + KABS.L1 + nbatch['name'] +": "+ KABS.LE
 				Log.Level = 1
 				self.log.log(nbatch['name'] +":") 
-				if  str(nbatch['name']) != "NONE" :
-					#print "\t\tSubmission script: " + KABS.L1 + nbatch['script'] + KABS.LE
+				if  nbatch['name'] != "NONE" :
 					Log.Level = 2
-					#self.log.data("Submission script",nbatch['script'])
 					self.log.log("Submission script",nbatch['script'])
-			#print "\t\tSubmission command: " + KABS.L1 + nbatch['submit']['command'] + ' '+ nbatch['submit']['parameters'] + KABS.LE
 			Log.Level = 2
-			#self.log.data("Submission command",nbatch['submit']['command'] + ' '+ nbatch['submit']['parameters'])			
 			self.log.log("Submission command",nbatch['submit']['command'] + ' '+ nbatch['submit']['parameters'])			
-			#print KABS.L0+"Items to Benchmark:"+ KABS.LE
 			self.log.log("Items to Benchmark")
 			self.__printAppsInfo()	
 			self.__printFSInfo()

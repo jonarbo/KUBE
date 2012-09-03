@@ -31,7 +31,7 @@ KaBS:
           submit: 
                 command: mpirun 
                 parameters: -np %NUMPROCS% -machinefile %HOSTSLISTFILE%  
-         
+
    BENCH: 
       APPS:
          - name: cp2k
@@ -129,7 +129,7 @@ KaBS:
                 active: true
                 args: < fen.fdf  > output.txt
                 analysis:  
-                   outputs: 
+                   outputs:
                       clock: CLOCK
                       output: output.txt
                       fenxml: fen.xml
@@ -169,7 +169,7 @@ KaBS:
                   active: true
                   exe: ./fs_test.x
                   # 10 objects of 1GB to write by each proc 
-                  args:  -type 2 –strided 1 -nobj 10 -size 1073741824  -target /scratch/mpiio_testfile -deletefile -touch 2 -check 2
+                  args:  -type 2 -strided 1 -nobj 10 -size 1073741824  -target /scratch/mpiio_testfile -deletefile -touch 2 -check 2
                   analysis:
                         outputs:
                                 output: KaBS_%NAME%_%NUMPROCS%.out 
@@ -194,7 +194,7 @@ KaBS:
                 - name: imb_3.2.3                            
                   active: true  
                   exe: bin/IMB-MPI1 # Full path or  Relative to the current dir
-                  dependencies:  #comma separated list of  files that will be copied to the run directory ... always relative to the 'source' dir
+                  dependencies:   #comma separated list of  files that will be copied to the run directory ... always relative to the 'source' dir
                   args: 1>imb.output                     
                   analysis:
                         outputs: 
