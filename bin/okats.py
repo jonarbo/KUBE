@@ -1043,7 +1043,7 @@ set grid polar
 					for batch in self.batchs: 
 						if batch['name'] == a['batch']:
 							for key in batch.keys():
-								if key!="name" and key!="script" and key!="monitor" and key!="submit" and key!="analysis"  and a.keys().count(key)==0 :
+								if key!="name" and key!="script" and key!="monitor" and key!="submit" and a.keys().count(key)==0 :
 									a[key] = batch[key]				
 							break # step out the batch loop
 					break # step out self.apps loop

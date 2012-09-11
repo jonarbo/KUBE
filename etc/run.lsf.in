@@ -1,5 +1,6 @@
 #!/bin/bash -l
 
+#BSUB -J %NAME%%
 #BSUB -o KaBS_%NAME%_%NUMPROCS%.out
 #BSUB -e KaBS_%NAME%_%NUMPROCS%.err
 #BSUB -q %QUEUE% 
