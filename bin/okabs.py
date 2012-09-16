@@ -175,15 +175,28 @@ class KABS:
 				data =  str(batch['submit']['command']) + " " + str(batch['submit']['parameters'] )+ " " + str(whichdataset['exe'] )
 			
 		# replace variables
-		for litem in  whichdataset:
-			str2find = "%("+ str(litem).upper() +")%"
-			prog = re.compile(str2find);
-			if litem != 'numprocs':
-					#data = prog.sub( unicode(whichdataset[litem]) ,data)	
-					data = prog.sub( str(whichdataset[litem]) ,data)	
+		counter=1
+		repeat = True
+		while repeat and counter < 20:	
+			for litem in  whichdataset:
+				str2find = "%("+ str(litem).upper() +")%"
+				prog = re.compile(str2find);
+				if litem != 'numprocs':
+						#data = prog.sub( unicode(whichdataset[litem]) ,data)	
+						data = prog.sub( str(whichdataset[litem]) ,data)	
+				else:
+					#data = prog.sub( unicode(p) ,data)		
+					data = prog.sub( str(p).strip() ,data)		
+			
+			if re.search("%.+%", data) != None:
+				repeat = True
+				counter = counter +1
 			else:
-				#data = prog.sub( unicode(p) ,data)		
-				data = prog.sub( str(p) ,data)		
+				repeat = False	
+		
+		if counter>19:
+			self.log.error("Missing variable!!!","I suspect that you missed to define some variable in the config file that is needed; presumably in the batch script.\n" )
+			sys.exit(1)	
 				
 		return data	
 
@@ -361,7 +374,13 @@ set grid polar
 			self.__analysisNet(name)	
 
 		elif item == 'f':
-			pass
+			self.log.plain("***********************************************")
+			self.log.plain("***    KaBS analysis stage for Filesystems: ***")
+			self.log.plain("***********************************************")
+			if self.a_filesys.keys().count(name) == 0:
+				self.log.warning( "Warning", "Filesystem " +  self.log.bold( name ) + " not found or not active"	)
+				return
+			self.__analysisFilesystem(name)				
 
 		elif item == 's':
 			self.log.plain("***********************************************")
@@ -371,12 +390,6 @@ set grid polar
 				self.log.warning( "Warning", "Benchmark " +  self.log.bold( name ) + " not found or not active"	)
 				return
 			self.__analysisSynthetics(name)				
-
-		elif item == 'm':
-			pass
-
-		elif item == 'x':
-			pass	
 
 		else:
 			print "Unknown item: '" + str(item) + "'"
@@ -392,8 +405,9 @@ set grid polar
 		analysisd = self.output_dir + "/analysis/apps/"+ name + "/"
 		runsd = self.output_dir + "/runs/apps/"+ name + "/"
 		if not os.path.exists(runsd):
-			self.log.error("Can't find any completed run for this app: " + self.log.bold(name) )
-			sys.exit(1)
+			self.log.warning("Can't find any completed run for this app: " + self.log.bold(name) )
+			return
+			#sys.exit(1)
 		if not os.path.exists(analysisd):
 			os.makedirs(analysisd)
 
@@ -406,22 +420,40 @@ set grid polar
 		analysisd = self.output_dir + "/analysis/synthetics/"+ name + "/"
 		runsd = self.output_dir + "/runs/synthetics/"+ name + "/"
 		if not os.path.exists(runsd):
-			self.log.error("Can't find any completed run for this synthetic: " + self.log.bold(name) )
-			sys.exit(1)
+			self.log.warning("Can't find any completed run for this synthetic: " + self.log.bold(name) )
+			return
+			#sys.exit(1)
 		if not os.path.exists(analysisd):
 			os.makedirs(analysisd)
 
-		for dataset in net:	
+		for dataset in synth:	
 			self.__analizeDataset(dataset,runsd,analysisd)		
 
+	def __analysisFilesystem(self,name):
+		self.log.log( name )
+		fs = self.a_filesys[name]
+		analysisd = self.output_dir + "/analysis/filesystems/"+ name + "/"
+		runsd = self.output_dir + "/runs/filesystems/"+ name + "/"
+		if not os.path.exists(runsd):
+			self.log.warning("Can't find any completed run for this filesystem: " + self.log.bold(name) )
+			return
+			#sys.exit(1)
+		if not os.path.exists(analysisd):
+			os.makedirs(analysisd)
+		
+		for dataset in filesys:	
+			self.__analizeDataset(dataset,runsd,analysisd)	
+			
+			
 	def __analysisNet(self,name):
 		self.log.log( name )
 		net = self.a_nets[name]
 		analysisd = self.output_dir + "/analysis/networks/"+ name + "/"
 		runsd = self.output_dir + "/runs/networks/"+ name + "/"
 		if not os.path.exists(runsd):
-			self.log.error("Can't find any completed run for this network: " + self.log.bold(name) )
-			sys.exit(1)
+			self.log.warning("Can't find any completed run for this network: " + self.log.bold(name) )
+			return
+			#sys.exit(1)
 		if not os.path.exists(analysisd):
 			os.makedirs(analysisd)
 
@@ -496,48 +528,74 @@ set grid polar
 			reple = re.compile( str2find )
 			mobj = reple.search(i)
 			cpus = mobj.group(1)
-			
+
 			# Copy the outputs needed ...
-			str2find = "^#(\d+)#"
-			prog = re.compile(str2find);	
-			for outp in  dataset['analysis']['outputs'].keys():
+			for outp in  dataset['outputs'].keys():
 				failed = False
-				mobj = prog.match(outp) 
+				mobj = re.match("#(\d+)#", outp)
 				if mobj:
-					if mobj.group(1)==cpus: 
-						if os.path.isfile(rundir + "/" + i + "/" + dataset['analysis']['outputs'][outp]) :					
-							shutil.copy( rundir + "/" + i + "/" + dataset['analysis']['outputs'][outp] , "./")
+					if mobj.group(1) == cpus:
+						if os.path.isfile(rundir + "/" + i + "/" + dataset['outputs'][outp]) :					
+							shutil.copy( rundir + "/" + i + "/" + dataset['outputs'][outp] , "./")
 						else:
-							self.log.waring("Warning","File " + self.log.bold( rundir + "/" + i + "/" + str(dataset['analysis']['outputs'][outp]) ) + " Does not exist.")
+							self.log.waring("Warning","File " + self.log.bold( rundir + "/" + i + "/" + str(dataset['outputs'][outp]) ) + " Does not exist.")
 							self.log.error("Analysis not completed!!!")
 							failed = True
 							break
 				else:
-					if os.path.isfile(rundir + "/" + i + "/" + dataset['analysis']['outputs'][outp]) :					
-						shutil.copy( rundir + "/" + i + "/" + dataset['analysis']['outputs'][outp] , "./")
-					else:
-						self.log.warning("Warning","File " + self.log.bold( rundir + "/" + i + "/" + str(dataset['analysis']['outputs'][outp]) ) + " Does not exist.")
-						self.log.error("Analysis not completed!!!")
-						failed = True
-						break
-			
+					skip = False
+					for again_outp in  dataset['outputs'].keys():				
+						if re.match("#"+cpus+"#"+outp , again_outp):
+							skip = True
+							break								
+					if not skip:	
+						if os.path.isfile(rundir + "/" + i + "/" + dataset['outputs'][outp]) :					
+							shutil.copy( rundir + "/" + i + "/" + dataset['outputs'][outp] , "./")
+						else:
+							self.log.warning("Warning","File " + self.log.bold( rundir + "/" + i + "/" + str(dataset['outputs'][outp]) ) + " Does not exist.")
+							self.log.error("Analysis not completed!!!")
+							failed = True
+							break		
+				
 				if failed == True:
 					continue
 				
-				if  dataset['analysis'].keys().count('metrics') != 0 :
+				if  dataset.keys().count('metrics') != 0 :
 					# now crate a .csv and the .raw file suitable to be used later on with gnuplot...
 					START = 0.0
 					END = 2*math.pi
-					STEP =  END/len(dataset['analysis']['metrics'])	
+					STEP =  END/len(dataset['metrics'])	
 					theta = frange(START,END,STEP)		
 					radio = []
 					metrics = []
 					o = open( "analysis.csv","w")
 					o.write(  "\"metric\",\"value\",\"units\"\n" )
-					for metric in dataset['analysis']['metrics']:
-						o.write( "\"" +metric['name']+ "\"," + "\"" + syscall( metric['command'])[0].strip() +"\"" +"\"" + metric['units'] + "\"\n"  ) 
-						radio.append ( syscall( metric['command'])[0].strip() )				
-						metrics.append( metric['name'] )
+					for metric in dataset['metrics']:
+						# Up to this point, values in Metric may contain %VALUES% to be replaced ... so we have to do it now
+						name=None
+						command=None
+						units=None
+						
+						# replace references to the output section						
+						for outp in  dataset['outputs'].keys():
+							#if not re.match( "#"+cpus+"#",outp  ):
+							if not re.match( "#\d+#",outp  ):
+								reple = re.compile( "%"+str(outp).upper()+"%" )
+								if dataset['outputs'].keys().count( "#"+cpus+"#"+outp) != 0:
+									name    = reple.sub(dataset['outputs']["#"+cpus+"#"+outp] , metric['name'] )	
+									units   = reple.sub(dataset['outputs']["#"+cpus+"#"+outp] , metric['units'] )	
+									command = reple.sub(dataset['outputs']["#"+cpus+"#"+outp] , metric['command'] )	
+								else:
+									name    = reple.sub(dataset['outputs'][outp] , metric['name'] )	
+									units   = reple.sub(dataset['outputs'][outp] , metric['units'] )	
+									command = reple.sub(dataset['outputs'][outp] , metric['command'] )	
+								
+						# Now replace other variables from the dataset... (TODO)		
+								
+						#o.write( "\"" +metric['name']+ "\"," + "\"" + syscall( metric['command'])[0].strip() +"\"," +"\"" + metric['units'] + "\"\n"  ) 
+						o.write( "\"" + name + "\"," + "\"" + syscall(command)[0].strip() +"\"," +"\"" + units + "\"\n"  ) 
+						radio.append ( syscall( command )[0].strip() )				
+						metrics.append( name )
 					o.flush()
 					o.close
 					
@@ -580,6 +638,13 @@ set grid polar
 					first = False
 				else:
 					self.__runSynthetics(synth)
+			first = True
+			for fs in self.a_filesys:
+				if first:
+					self.run('f',fs)
+					first = False
+				else:
+					self.__runFilesys(fs)		
 				
 		elif item == 'a':
 			self.log.plain("********************************************")			
@@ -600,7 +665,13 @@ set grid polar
 			self.__runNet(name)
 				
 		elif item == 'f':
-			pass
+			self.log.plain("*********************************************")			
+			self.log.plain("*** Running KaBS for selected Filesystem: ***")
+			self.log.plain("*********************************************")
+			if self.a_filesys.keys().count(name) == 0:
+				self.log.warning("Warning","Filesystem " +  self.log.bold(name) + " not found or not active"	)
+				return		
+			self.__runFilesys(name)
 		
 		elif item == 's':
 			self.log.plain("**********************************************")			
@@ -611,40 +682,18 @@ set grid polar
 				return		
 			self.__runSynthetics(name)
 
-		elif item == 'x':
-			self.log.plain("***  Acceptance test not implemented yet  ***")
-
 		else:
 			print "Unknown item: '" + str(item) + "'"
 
-	def __runApp(self,whichapp):
+	def __runApp(self,which):
 		""" Run the given app whose name is specified
 		"""
-		app = self.a_apps[whichapp]
-		self.log.log(whichapp)
-		source = self.home + "/bench/apps/"+ whichapp + "/"
-		target = self.output_dir + "/"
-		for dataset in app:
-			self.log.plain( "Dataset: " +  self.log.bold(dataset['name'] ) )
-			s = source + dataset['name']+".tgz" 	
-			if not os.path.exists(s):
-				self.log.error("Dataset Error:","Could not find: " + s)
-				sys.exit(1)        	
-			t = target+"runs/apps/"+whichapp+"/"+dataset['name'] +"/"
-			if not os.path.exists(t):
-				os.makedirs(t)
-		
-			# Uncompress dataset:
-			cwd = os.getcwd()
-			file = s  
-			self.log.plain( "Unpacking file: "+ self.log.bold( file ))
-			cmd = "tar -zxf " + file 
-			print cmd
-			os.chdir(t)
-			os.system(cmd)
-			
-			self.__runDataset(dataset,t)			
-			shutil.rmtree(  dataset['name'] )
+		self.log.log(which)
+		app = self.a_apps[which]
+		source = self.home + "/bench/apps/"+ which + "/"
+		target = self.output_dir + "/"+ "runs/apps/" + which + "/"
+		self.__runBasic(app,source,target,True)
+	
 
 	def __runSynthetics(self, which):
 		""" Run the given Synthetic whose name is specified
@@ -664,7 +713,17 @@ set grid polar
 		target = self.output_dir + "/" + "runs/networks/" + which + "/"
 		self.__runBasic(net,source,target)
 
-	def __runBasic(self,bench,source,target):
+	def __runFilesys(self, which):
+		""" Run the given Filesystem benchmark whose name is specified
+		"""
+		self.log.log(which)
+		net = self.a_filesys[which]
+		source = self.home + "/bench/filesystems/"+ which + "/"
+		target = self.output_dir + "/" + "runs/filesystems/" + which + "/"
+		self.__runBasic(net,source,target)
+
+
+	def __runBasic(self,bench,source,target,isApp=False):
 		for dataset in bench:
 			self.log.plain( "Dataset: " +  self.log.bold(dataset['name'] ) )
 			if not os.path.exists(source):
@@ -679,38 +738,25 @@ set grid polar
 				
 			cwd = os.getcwd()
 			os.chdir(t)					
-			# Copy input files if any
-			files = ""
-			if dataset.keys().count("dependencies") != 0:
-				files = dataset['dependencies']
-			inputs = str(files).split(',')
-			for input in inputs:
-				if input != 'None' and input != "" and input != "u''":
-					input = input.strip()
-					self.log.plain( "Copying dependency file: "+ self.log.bold( str(input) )  + " into run directory")
-					# input is always relative to the 'source' directory
-					if not os.path.exists( os.path.dirname("./" + dataset['name'] + '/'+ input )) :
-						os.makedirs( os.path.dirname("./" + dataset['name'] + '/'+ input ) )
-					file = glob.glob(os.path.join( source + dataset['name']+ '/'  , input))
-					for f in file:
-						shutil.copy( f ,os.path.dirname("./" + dataset['name'] + '/'+ input )  )
-					#shutil.copy( source + dataset['name']+ '/' + input , "./" + dataset['name'] + '/'+  input )
 
-			#now copy the  exe if it is in a relative path format
-			if not re.match("/",dataset['exe']): # Is not in full path format
-				if  os.path.exists(source + dataset['name']+ '/' + dataset['exe'] ):
-					if not os.path.exists( os.path.dirname("./" + dataset['name'] + '/'+ dataset['exe'])) :
-						os.makedirs( os.path.dirname("./" + dataset['name'] + '/'+ dataset['exe'] ) )
-					if not os.path.isfile( "./" + dataset['name'] + '/'+ dataset['exe'] ):	
-						shutil.copy( source + dataset['name']+ '/' + dataset['exe'] , "./" + dataset['name'] + '/'+ dataset['exe'])
-				else:
-					self.log.warning("Warning","Can't copy exe file. File not found. Plese check the benchmark and the configuration file")
-					sys.exit(1)
-						
-			self.__runDataset(dataset,t)
+			# If App copy the dataset
+			if isApp==True:
+				#APP SPECIFIC PART!!!	
+	 			s = source + dataset['name']+".tgz" 	
+	 			if not os.path.exists(s):
+	 				self.log.error("Dataset Error:","Could not find: " + s)
+	 				sys.exit(1)       	
+	 			# Uncompress dataset:
+	 			file = s  
+	 			self.log.plain( "Unpacking file: "+ self.log.bold( file ))
+	 			cmd = "tar -zxf " + file 
+	 			print cmd
+	 			os.system(cmd)				
+
+			self.__runDataset(dataset,source,t,isApp)
 			shutil.rmtree(  dataset['name'] )		
 
-	def __runDataset(self,dataset,t):
+	def __runDataset(self,dataset,source,t, isApp ):
 		############# 
 		# Run dataset
 		#############
@@ -724,7 +770,7 @@ set grid polar
 		
 		print "---------------------------------------------------------"
 		for p in nprocs:
-			
+			p = p.strip()
 			try:
 				if int(p)==0:
 					self.log.warning("Warning","No valid proc found ... dataset " + self.log.bold( str( dataset['name'] ))  + " skipped")
@@ -740,8 +786,8 @@ set grid polar
 				run_id = dataset['name'] + "_" + p + "cpus_"  + str(newname)
 			
 			print "Run ID: " + self.log.bold( run_id) , 
-			# change dir name to identify as an unique outcome	
 	
+			# change dir name to identify as an unique outcome	
 			if os.path.isdir( run_id ):
 				print "\n"
 				self.log.plain("Directory: " +   self.log.bold(run_id)  +" already exists" + ". Trying to run the same dataset in less than a second.")
@@ -760,11 +806,52 @@ set grid polar
 			shutil.copytree(  dataset['name'] , run_id )		
 	
 			# get the script or the command to run it
-			data = self.__getBatchScript(dataset,p) 
+			data = self.__getBatchScript(dataset,p.strip()) 
 			
 			rpath = t + run_id 
 			os.chdir(rpath)  
-				
+			
+			if not isApp:
+				files = None
+				exe = None
+			
+				#see if there is any #PROCS# field
+				if  dataset.keys().count("#"+str(p)+"#dependencies") != 0:
+					files = dataset['#'+str(p)+'#dependencies']
+				elif dataset.keys().count("dependencies") != 0 :
+					files = dataset['dependencies']
+					
+				if 	dataset.keys().count("#"+str(p)+"#exe") != 0:
+					exe = dataset['#'+str(p)+'#exe']
+				elif dataset.keys().count("exe") != 0 :
+					exe = dataset['exe']
+					
+					
+				# Now copy files  if any				
+				if files != None:	
+					inputs = str(files).split(',')
+					for input in inputs:
+						if input != 'None' and input != "" and input != "u''":
+							input = input.strip()
+							self.log.plain( "Copying dependency file: "+ self.log.bold( str(input) )  + " into run directory")
+							# input is always relative to the 'source' directory
+							if not os.path.exists( os.path.dirname("./" + input )) :
+								os.makedirs( os.path.dirname("./" + input ) )
+							file = glob.glob(os.path.join( source + dataset['name']+ '/'  , input))
+							for f in file:
+								shutil.copy( f ,os.path.dirname("./" + input )  )
+						
+				print exe		
+				if not re.match("/",exe): # Is not in full path format
+					if  os.path.exists(source + dataset['name']+ '/' + exe ):
+						if not os.path.exists( os.path.dirname("./" + exe)) :
+							os.makedirs( os.path.dirname("./" + exe ) )
+						if not os.path.isfile( "./" + exe ):	
+							shutil.copy( source + dataset['name']+ '/' + exe , "./" + exe)
+					else:
+						self.log.warning("Warning","Can't copy exe file. File not found. Plese check the benchmark and the configuration file")
+						sys.exit(1)
+	
 			failed = False				
 			# submit or run job
 			if  dataset['batch'] == "NONE":
@@ -855,9 +942,6 @@ set grid polar
 		elif item == 's':
 			self.log.plain("\n***  Showing configuration for Synthetics benchmarks ***\n")	
 			self.__printSynthInfo(name)
-		elif item == 'x':
-			self.log.plain("\n***  Showing configuration for the Acceptance benchmark  ***\n"	)
-			self.__printAcceptanceInfo()	
 		else:
 			print "Unknown item: '" + str(item) + "'"
 		
@@ -876,13 +960,12 @@ set grid polar
 				self.log.log(k,"with ..." )
 				for l in range(len(self.a_apps[k])):
 					Log.Level =3
-					#self.log.data("dataset",str( self.a_apps[k][l]['name']))
 					self.log.log("dataset",str( self.a_apps[k][l]['name']))
 					for litem in  self.a_apps[k][l]:
-						if litem != 'name' and litem != 'analysis':
-							Log.Level = 4
-							#self.log.data(litem ,str( self.a_apps[k][l][litem])  )
-							self.log.log(litem ,str( self.a_apps[k][l][litem])  )
+						if litem != 'name' and litem != 'outputs' and litem != 'metrics' and litem != 'datasets' and litem != 'active' and not re.match("launcher",litem) and  not re.match("#\d+#",litem):
+							if str(self.a_apps[k][l][litem]).strip() != None or str(self.a_apps[k][l][litem]).strip() != '' :
+								Log.Level = 4								
+								self.log.log(litem ,str( self.a_apps[k][l][litem])  )
 		else:
 			if self.a_apps.keys().count(which) == 0:
 				self.log.warning("Warning","Application " + self.log.bold(which)  + " not found or not active")
@@ -898,9 +981,10 @@ set grid polar
 						break;	
 	
 	def __printFSInfo(self, which=None):
-		#self.__printBaseInfo( self.a_filesys, self.filesys, which, "Filesystems")
-		pass
-	
+		""" Prints out configuration information for a specific Filesystem benchmarks or for all filesystem benchmarks
+		"""
+		self.__printBaseInfo( self.a_filesys, self.filesys, which, "Filesystems")
+		
 	def __printSynthInfo(self,which=None):
 		""" Prints out configuration information for a specific Synthetic benchmarks or for all synthetic benchmarks
 		"""
@@ -911,10 +995,6 @@ set grid polar
 		"""
 		self.__printBaseInfo( self.a_nets, self.nets, which,"Networks")		
 		
-	def __printAcceptanceInfo(self):
-		Log.Level = 1
-		self.log.log("Acceptance:")
-
 	def __printBatchSystemInfo(self,mybatch):
 		submit_cmd = mybatch['submit']['command']
 		submit_params = mybatch['submit']['parameters']	
@@ -943,7 +1023,7 @@ set grid polar
 			for p in nprocs:
 				self.log.plain("dataset: " + self.log.bold(str( dataset['name'] )) + " with " +  self.log.bold(p)  + " procs")
 				self.log.log("Submission script:")
-				data = self.__getBatchScript(dataset,p,)
+				data = self.__getBatchScript(dataset,p.strip())
 				print data
 				print "-------------------------------------------------"			
 
@@ -952,15 +1032,15 @@ set grid polar
 		"""
 		if which==None: # means ALL
 			Log.Level = 1	
-			self.log.log(str(section)," " )	
-			Log.Level =	 2
+			self.log.log(str(section)," " )		
 			for k in who.keys():
+				Log.Level =	 2
 				self.log.log(k," " )
 				for l in range(len(who[k])):
 					Log.Level =3
 					self.log.log("dataset",str( who[k][l]['name']))
 					for litem in  who[k][l]:
-						if litem == 'numprocs' or litem == 'tasks_per_node' or litem == 'exe' or litem == 'batch' :
+						if litem == 'numprocs' or litem == 'tasks_per_node' or litem == 'exe' or litem == 'batch' and  not re.match("#\d+#",litem):
 							Log.Level = 4
 							self.log.log(litem ,str( who[k][l][litem])  )
 		else:
@@ -1002,14 +1082,14 @@ set grid polar
 					self.apps.remove(app)
 					repeat = True
 				else:
-					if app['active'] and ( app.keys().count('dataset')==0 or app.keys().count('batch')==0 or app.keys().count('exe')==0  ):
-						self.log.error("Config file Error"," 'dataset', 'exe' and 'batch' fields are required for any active APP: " + self.log.bold(app['name']) + " ... Skipping this entry")
+					if app['active'] and ( app.keys().count('datasets')==0 or app.keys().count('batch')==0 or app.keys().count('exe')==0  ):
+						self.log.error("Config file Error"," 'datasets', 'exe' and 'batch' fields are required for any active APP: " + self.log.bold(app['name']) + " ... Skipping this entry")
 						self.apps.remove(app)
 						repeat = True		
 
 		# set i_apps and self.a_apps
 		self.i_apps = [ app['name'] for app in self.apps if not app['active'] ]	# List with the name of the inactive apps
-		self.a_apps = dict( [ (app['name'],app['dataset']) for app in self.apps if app['active'] ]) # Dictionary Name->Array of datasets  of active apps
+		self.a_apps = dict( [ (app['name'],app['datasets']) for app in self.apps if app['active'] ]) # Dictionary Name->Array of datasets  of active apps
 		
 		# update self.a_apps and remove inactive datasets... also if there is no active dataset remove app from the list of active apps
 		repeatf = True
@@ -1027,10 +1107,6 @@ set grid polar
 						elif dataset['active'] != True:
 							self.a_apps[napp].remove(dataset)
 							repeat = True
-						elif dataset.keys().count('analysis')==0:
-							self.log.error("Config file error"," 'analysis' field is required for any active dataset in app: " + self.log.bold(napp) + " ... Skipping this dataset")
-							self.a_apps[napp].remove(dataset)
-							repeat = True
 													
 				if len( self.a_apps[napp] ) == 0:
 					del(self.a_apps[napp])
@@ -1043,7 +1119,7 @@ set grid polar
 					for batch in self.batchs: 
 						if batch['name'] == a['batch']:
 							for key in batch.keys():
-								if key!="name" and key!="script" and key!="monitor" and key!="submit" and key!="analysis"  and a.keys().count(key)==0 :
+								if key!="name" and key!="script" and key!="monitor" and key!="submit"   and a.keys().count(key)==0 :
 									a[key] = batch[key]				
 							break # step out the batch loop
 					break # step out self.apps loop
@@ -1057,19 +1133,39 @@ set grid polar
 							if sk=="batch": # Force the dataset to use always the batch system defined  for the app
 											# the 'batch' parameter is global to the app, not dataset specific 
 								dataset[sk] = a[sk]
-							elif  dataset.keys().count(sk)==0 and sk!="name" and sk!="dataset" and sk!="active" :
+							elif  dataset.keys().count(sk)==0 and sk!="name" and sk!="dataset" and sk!="active" :							
 								if a[sk] != None:
-									dataset[sk] = a[sk] 
+									if sk == 'outputs':
+										for o in a[sk].keys():
+											if  dataset.keys().count(sk)==0:
+												dataset[sk]={}											
+											dataset[sk][o] = a[sk][o] 											
+									elif sk == 'metrics':
+										for m in  a[sk]:
+											if dataset.keys().count(sk)==0:
+												dataset[sk]=[]
+											dataset[sk].append(m)
+									else:
+										dataset[sk] = a[sk] 
 								else:
 									dataset[sk] = "" 		
-														
-						if dataset.keys().count('numprocs')==0 or dataset.keys().count('tasks_per_node')==0:
-							self.log.error("Config file error"," Dataset of " + self.log.bold(appname) + " found without 'numprocs' and/or 'tasks_per_node' defined. This tags are mandatory!!!") 
+
+						if dataset.keys().count('tasks_per_node')==0:
+							self.log.error("Config file error"," Dataset of " + self.log.bold(appname) + " found without 'tasks_per_node' defined. This tag is mandatory!!!") 
 							self.log.error("Please revise your configuration file !!!")
 							sys.exit(1)	
+						elif dataset.keys().count('numprocs')==0 :
+							self.log.error("Config file error"," Dataset of " + self.log.bold(appname) + " found without 'numprocs'. This tag is mandatory!!!") 
+							self.log.error("Please revise your configuration file !!!")
+							sys.exit(1)	
+						elif dataset.keys().count('outputs')==0 :
+							self.log.error("Config file error"," Dataset of " + self.log.bold(appname) + " found without 'outputs'. This tag is mandatory!!!") 
+							self.log.error("Please revise your configuration file !!!")
+							sys.exit(1)	
+						
 						break # step out apps loop
 
-		self.__substituteVarsInSection_analysis(self.a_apps)
+		self.__substituteVarsForAnalysis(self.a_apps)
 	
 	def __readSynthetics(self,yaml_conf):
 		""" Reads Synthetic section and do some error check """
@@ -1077,11 +1173,11 @@ set grid polar
 		self.synths = yaml_conf['KaBS']['BENCH']['SYNTHETICS'] # Array of dictionaries with synthetic bench info: active, exe, name, etc...
 		self.__sanityBasic(self.synths,"Synthetics")
 		#set active Synthetics:
-		self.a_synths = dict( [ (synth['name'],synth['dataset']) for synth in self.synths if synth['active'] ]) # Dictionary Name->Array of datasets  of active networks
+		self.a_synths = dict( [ (synth['name'],synth['datasets']) for synth in self.synths if synth['active'] ]) # Dictionary Name->Array of datasets  of active networks
 		# update self.a_synths and remove inactive datasets ... also if there is no active dataset remove synthetic from the list of active items
 		self.__updateActiveElements(self.a_synths,"Synthetics")
 		self.__populateElements(self.a_synths, self.synths)
-		self.__substituteVarsInSection_analysis(self.a_synths)
+		self.__substituteVarsForAnalysis(self.a_synths)
 	
 	def __readNets(self,yaml_conf):
 		""" Reads Networks section and do some error check """
@@ -1089,11 +1185,24 @@ set grid polar
 		self.nets = yaml_conf['KaBS']['BENCH']['NETWORKS'] # Array of dictionaries with nets info: active, exe, name, etc...
 		self.__sanityBasic(self.nets,"Networks")
 		#set active networks:
-		self.a_nets = dict( [ (net['name'],net['dataset']) for net in self.nets if net['active'] ]) # Dictionary Name->Array of datasets  of active networks
+		self.a_nets = dict( [ (net['name'],net['datasets']) for net in self.nets if net['active'] ]) # Dictionary Name->Array of datasets  of active networks
 		# update self.a_nets and remove inactive datasets ... also if there is no active dataset remove network from the list of active networks
 		self.__updateActiveElements( self.a_nets ,"Networks")
 		self.__populateElements(self.a_nets ,self.nets)
-		self.__substituteVarsInSection_analysis(self.a_nets)
+		self.__substituteVarsForAnalysis(self.a_nets)
+
+	def __readFilesystems(self,yaml_conf):
+		""" Reads Filesystems section and do some error check """
+		# set self.filesys
+		self.filesys = yaml_conf['KaBS']['BENCH']['FILESYSTEMS'] # Array of dictionaries with filesystems info: active, exe, name, etc...
+		self.__sanityBasic(self.filesys,"Filesystems")
+		#set active filesystems:
+		self.a_filesys = dict( [ (fs['name'],fs['datasets']) for fs in self.filesys if fs['active'] ]) # Dictionary Name->Array of datasets  of active filesystems
+		# update self.a_filesys and remove inactive datasets ... also if there is no active dataset remove filesystem from the list of active filesystems
+		self.__updateActiveElements( self.a_filesys ,"Filesystems")
+		self.__populateElements(self.a_filesys ,self.filesys)
+		self.__substituteVarsForAnalysis(self.a_filesys)
+
 
 	def __substituteVarsInBatch_NONE(self):
 		""" The 'NONE' batch system should be very flexible. For that reason inside the 'submit' tag,
@@ -1114,53 +1223,78 @@ set grid polar
 							for elem in batch[nkey2]:
 								batch[nkey2][elem] = reple.sub(batch[sstr],batch[nkey2][elem])		
 				break;
+
+	# Substitute in the target string, all the matches contained in keysDict with the values in dataset[ ... ] 
+	def __substitute( self, strTarget , keysDict, dataset  ):
+		outputDict={}
+		for sstr in keysDict.keys():
+			reple = re.compile( keysDict[sstr] )	
+			if reple.search( strTarget ) : # there is a match
+				ndatasetsstr = re.sub(r'\s', '', str(dataset[sstr]) )	# security ... just remove all white spaces							
+				if 	len(ndatasetsstr.split(','))<2 : # there is not a comma separated list:
+							strTarget = reple.sub(ndatasetsstr,strTarget)									
+				else: # there is a comma separated list,so we have to create an entry for every value (ie: numprocs could be a comma separated list)
+					values = ndatasetsstr.split(',')
+					for value in values: # create an entry for each value	 
+						value = value.strip()	
+						outputDict[str(value)] = self.__substitute( reple.sub(value,strTarget) , keysDict, dataset )
+		
+		if not outputDict :		
+			return strTarget
+		else:
+			return outputDict
 	
-	def __substituteVarsInSection_analysis(self,item):
-		""" Inside a dataset; the ['analysis']['outputs'] fields may contain references to fields defined
+	def __substituteVarsForAnalysis(self,item):
+		""" Inside a dataset; the ['outputs'] , ['args'], ['dependencies'] and ['exe'] fields may contain references to fields defined
 			in the app. ie: one output name might contain the number of cpus used in the run.
-			Additionally, the ['analysis']['metrics'] elements may contain references to the outputs names defined above.
+			Additionally, the ['metrics'] elements may contain references to the outputs names defined above.
 			So, this function does this replacements of the references to the right values. The convention used
 			for a reference is %FIELD_NAME_IN_CAPITALS%	"""
-		# Replace inline variables in the ['analysis']['outputs'] section inside each dataset
-		#for appname in self.a_apps.keys():
+		# Replace inline variables in the ['outputs'] section inside each dataset
+		itemsToReplace=['outputs','dependencies','args','exe']
 		for name in item.keys():	
-#			for dataset in self.a_apps[appname]:
 			for dataset in item[name]:
 				str2find = {}
 				for nkey in dataset.keys():
-					if nkey!='analysis' : 
+					# to avoid cyclic dependencies, remove the entries to be replaced from the search list
+					if nkey!='outputs' and  nkey!='metrics' and  nkey!='dependencies' and  nkey!='args' and  nkey!='exe': 
 						str2find[nkey]= "%"+ nkey.upper() +"%"		
-				for sstr in str2find.keys():
-					reple = re.compile( str2find[sstr] )	
-					ndatasetsstr = re.sub(r'\s', '', str(dataset[sstr]) )	# security ... just remove all white spaces		
-					#ndatasetsstr = re.sub(r'\s', '', unicode(dataset[sstr]) )	# security ... just remove all white spaces		
-					if 	len(ndatasetsstr.split(','))<2 : # there is not a comma separated list:
-						for outpkey in dataset['analysis']['outputs'].keys():
-							dataset['analysis']['outputs'][outpkey] = reple.sub(ndatasetsstr,dataset['analysis']['outputs'][outpkey])		
-					else: # there is a comma separated list,so we have to create an entry for every value (ie: numprocs could be a comma separated list)
-						values = ndatasetsstr.split(',')
-						for outpkey in dataset['analysis']['outputs'].keys():
-							if reple.search( dataset['analysis']['outputs'][outpkey] ) : # there is a match
-								for value in values: # create an entry for each value	 
-									dataset['analysis']['outputs']['#'+str(value)+'#'+outpkey] = reple.sub(value,dataset['analysis']['outputs'][outpkey])
-								# and delete previous entry ..
-								del dataset['analysis']['outputs'][outpkey]	
-							else:
-								# Do nothing ...
-								pass
-								
-		# Replace inline variables in the ['analysis']['metrics'] section inside each dataset
+				for rkey in itemsToReplace:
+					if dataset.keys().count(rkey) != 0:
+						if rkey =='outputs':
+							for outpkey in dataset[rkey].keys():
+								if dataset[rkey][outpkey] != None: 
+									 retValue = self.__substitute( dataset[rkey][outpkey] , str2find, dataset )	
+									 if isinstance(retValue,dict):
+										for retKey in retValue.keys():
+											dataset[rkey]["#" + retKey + "#" + outpkey] = retValue[retKey]
+										# and delete previous entry .. NOOOOOOOO dont delete cuz it will be used later on ... ie: metrics are not translated into a specific proc number until the end
+										#del dataset[rkey][outpkey]
+									 else:
+										 dataset[rkey][outpkey] = retValue 
+						else:
+							if dataset[rkey] != None: 
+								retValue = self.__substitute( dataset[rkey] , str2find, dataset )	
+								if isinstance(retValue,dict):
+									for retKey in retValue.keys():
+										dataset["#" + retKey + "#" + rkey] = retValue[retKey]
+									# and delete previous entry .. NOOOOOOOO dont delete cuz it will be used later on ... ie: metrics are not translated into a specific proc number until the end
+									#del dataset[rkey]
+								else:
+									dataset[rkey]= retValue 					
+									
+		# Replace inline variables in the ['metrics'] section inside each dataset ...
 		for name in item.keys():	
 			for dataset in item[name]:
 				str2find = {}
-				for nkey in dataset['analysis']['outputs'].keys():
+				for nkey in dataset['outputs'].keys():
 					str2find[nkey]= "%"+ nkey.upper() +"%"
 				for sstr in str2find.keys():
 					reple = re.compile( str2find[sstr] );
-					if ( dataset['analysis'].keys().count('metrics') != 0 ):
-						for metric in dataset['analysis']['metrics']:
+					if ( dataset.keys().count('metrics') != 0 ):
+						for metric in dataset['metrics']:
 							for elem in metric:
-								metric[elem] = reple.sub(dataset['analysis']['outputs'][sstr],metric[elem])									
+								metric[elem] = reple.sub(dataset['outputs'][sstr],metric[elem])									
 		
 	def __updateActiveElements(self,a_elems,mstr):	
 		repeatf = True
@@ -1178,13 +1312,9 @@ set grid polar
 						elif dataset['active'] != True:
 							a_elems[elem].remove(dataset)
 							repeat = True
-						elif dataset.keys().count('analysis')==0:							
-							self.log.error("Config file error"," 'analysis' field is required for any active dataset in " + mstr + ": " + self.log.bold(elem) + " ... Skipping this dataset")
-							a_elems[elem].remove(dataset)
-							repeat = True
 													
 				if len( a_elems[elem] ) == 0:
-					del(a_elems[elems])
+					del(a_elems[elem])
 					repeatf = True
 
 	def	__populateElements(self,a_elems,elems):
@@ -1210,14 +1340,34 @@ set grid polar
 								dataset[sk] = a[sk]
 							elif  dataset.keys().count(sk)==0 and sk!="name" and sk!="dataset" and sk!="active" :
 								if a[sk] != None:
-									dataset[sk] = a[sk] 
+									if sk == 'outputs':
+										for o in a[sk].keys():
+											if  dataset.keys().count(sk)==0:
+												dataset[sk]={}											
+											dataset[sk][o] = a[sk][o] 											
+									elif sk == 'metrics':
+										for m in  a[sk]:
+											if dataset.keys().count(sk)==0:
+												dataset[sk]=[]
+											dataset[sk].append(m)
+									else:											
+										dataset[sk] = a[sk] 	
 								else:
 									dataset[sk] = "" 		
-														
-						if dataset.keys().count('numprocs')==0 or dataset.keys().count('tasks_per_node')==0:							
-							self.log.error("Config file error"," dataset of " + self.log.bold(aname) + " found without 'numprocs' and/or 'tasks_per_node' defined. This tags are mandatory!!!") 
+													
+						if dataset.keys().count('tasks_per_node')==0:
+							self.log.error("Config file error"," Dataset of " + self.log.bold(aname) + " found without 'tasks_per_node' defined. This tag is mandatory!!!") 
 							self.log.error("Please revise your configuration file !!!")
 							sys.exit(1)	
+						elif dataset.keys().count('numprocs')==0 :
+							self.log.error("Config file error"," Dataset of " + self.log.bold(aname) + " found without 'numprocs'. This tag is mandatory!!!") 
+							self.log.error("Please revise your configuration file !!!")
+							sys.exit(1)	
+						elif dataset.keys().count('outputs')==0 :
+							self.log.error("Config file error"," Dataset of " + self.log.bold(aname) + " found without 'outputs'. This tag is mandatory!!!") 
+							self.log.error("Please revise your configuration file !!!")
+							sys.exit(1)	
+								
 						break # step out 'a' loop		
 		
 	def __sanityBasic(self,elems,mstr):
@@ -1232,8 +1382,8 @@ set grid polar
 					self.elems.remove(elem)
 					repeat = True
 				else:
-					if elem['active'] and ( elem.keys().count('dataset')==0 or elem.keys().count('batch')==0  ):
-						self.log.error("Config file Error"," 'dataset', and 'batch' fields are required for any active "+mstr+": " + self.log.bold(elem['name']) + " ... Skipping this entry")
+					if elem['active'] and ( elem.keys().count('datasets')==0 or elem.keys().count('batch')==0  ):
+						self.log.error("Config file Error"," 'datasets', and 'batch' fields are required for any active "+mstr+": " + self.log.bold(elem['name']) + " ... Skipping this entry")
 						self.elems.remove(elem)
 						repeat = True	
 										
@@ -1301,16 +1451,16 @@ set grid polar
 		if (yaml_conf['KaBS']['BENCH'].keys().count('APPS') == 0) or \
 			(yaml_conf['KaBS']['BENCH'].keys().count('FILESYSTEMS') == 0) or \
 			(yaml_conf['KaBS']['BENCH'].keys().count('NETWORKS') == 0) or \
-			(yaml_conf['KaBS']['BENCH'].keys().count('SYNTHETICS') == 0) or \
-			(yaml_conf['KaBS']['BENCH'].keys().count('ACCEPTANCE') == 0):		
-			self.log.error("Config file error","'APPS','FILESYSTEMS','NETWORKS','SYNTHETICS','ACCEPTANCE' tags are mandatory inside BENCH")
+			(yaml_conf['KaBS']['BENCH'].keys().count('SYNTHETICS') == 0) :		
+			self.log.error("Config file error","'APPS','FILESYSTEMS','NETWORKS','SYNTHETICS' tags are mandatory inside BENCH")
 			sys.exit(1)	
 			
 		# and fill each one if them:	
 		self.__readApps(yaml_conf)
 		self.__readNets(yaml_conf)
-		self.__readSynthetics(yaml_conf)			
-											
+		self.__readSynthetics(yaml_conf)
+		self.__readFilesystems(yaml_conf)
+														
 		# End setting variables
 		########################################################################################
 		
@@ -1357,7 +1507,7 @@ if __name__ == "__main__":
 
 	# ARGS processing
 	usage = "%prog <Option> [ [<Selector>] [<arg>] ]"
-	parser = optparse.OptionParser(usage=usage,version='%prog version 0.1')
+	parser = optparse.OptionParser(usage=usage,version='%prog version 0.8')
 	parser.add_option("--clean", action="store_true", help="Remove all stored results from previous runs and analysis", default=False,dest='clean')
 	parser.add_option("-d", "--debug", action="store_true", help="Debug mode: Show the actions to be performed", default=False,dest='d')
 	parser.add_option("-r", "--run", action="store_true",   help="Run the whole benchmark or a specific item according to the 'Selectors' below", default=False,dest='r')
@@ -1371,7 +1521,7 @@ if __name__ == "__main__":
 	groupRun.add_option("-n", action="store", help="Select a specific network benchmark",dest='n')
 	groupRun.add_option("-s", action="store", help="Select a specific synthetic benchmark.", dest='s')
 	groupRun.add_option("-f", action="store", help="Select a specific filesystem benchmark",dest='f')
-	groupRun.add_option("-x", action="store_true", help="Select the Acceptance benchmark", default=False,dest='x')
+#	groupRun.add_option("-x", action="store_true", help="Select the Acceptance benchmark", default=False,dest='x')
 	parser.add_option_group(groupRun)
 		
 	(opts, args) = parser.parse_args()
@@ -1413,9 +1563,9 @@ if __name__ == "__main__":
 		if value == True:
 			if attr=='d' or attr=='r' or attr=='p' or attr=='c' :
 				opt_counter = opt_counter + 1
-			elif attr=='s' or attr=='x' :
-				sel_counter = sel_counter +1
-		elif ( attr=='a'  or  attr=='n' or  attr=='f') and value != None:
+#			elif attr=='s' :
+#				sel_counter = sel_counter +1
+		elif ( attr=='a'  or  attr=='n' or  attr=='f' or  attr=='s') and value != None:
 			sel_counter = sel_counter +1		
 		elif attr=='k' and value != None :
 			opt_counter = opt_counter + 1
@@ -1442,7 +1592,8 @@ if __name__ == "__main__":
 			option = attr	
 			if (attr=='k' and value!=None):	
 				itemname = value
-		if  ( ( attr=='a'  or  attr=='n' or  attr=='f' or  attr=='s' ) and value!= None) or ( attr=='x' and value==True):
+#		if  ( ( attr=='a'  or  attr=='n' or  attr=='f' or  attr=='s' ) and value!= None) or ( attr=='x' and value==True):
+		if  ( ( attr=='a'  or  attr=='n' or  attr=='f' or  attr=='s' ) and value!= None) :
 			# got selector
 			selector = attr
 			itemname = value

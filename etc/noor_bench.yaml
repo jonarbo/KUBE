@@ -15,7 +15,7 @@ KaBS:
                 parameters:  < 
                 submittedmsg: Job <%JOBID%> is submitted to queue 
           monitor: bjobs -u all | gawk '{print $1}' | grep %JOBID%
-          numprocs: 4,8,16,32
+          numprocs: 4, 8,16,32
           tasks_per_node: 8           
           queue: rh6_q20m                             
           launcher: mpirun.lsf  
@@ -49,109 +49,94 @@ KaBS:
            # following parameters are dataset dependent... 
            # This values will be used unless they are redefined in the "dataset" section 
            exe: namd2_mpi                       
-           modules: module load gcc mpi-openmpi  libs-extra fftw2/2.1.5-openmpi-1.4.3-sse4.2-sp namd    
+           modules:  module load gcc mpi-openmpi  libs-extra fftw2/2.1.5-openmpi-1.4.3-sse4.2-sp namd    
+           metrics: 
+              - name: wallclock
+                units: secs
+                command: cat %OUTPUT% | grep WallClock | gawk '{print $2}'                
+              - name: days/ns
+                units: days/ns
+                command: cat %OUTPUT% | grep  Benchmark | gawk 'END{print $8}' 
+              - name: cputime
+                units: secs
+                command: cat %OUTPUT% | grep CPUTime | gawk '{print $4}'                     
+              - name: memory
+                units: MB
+                command: cat %OUTPUT%  | grep Memory | gawk '{print $6}'         
+           
            # here goes the specific dataset configuration
-           dataset: 
+           datasets: 
               - name: namd_nucleosome146Katoms
-                active: true
-                args: nucleosome146Katoms.namd  > nucleosome.out  2>nucleosome.err
-                analysis:  
-                   outputs: 
-                      output: nucleosome.out                      
-                   metrics: 
-                      - name: wallclock
-                        units: secs
-                        command: cat %OUTPUT% | grep WallClock | gawk '{print $2}' 
-                   
-                      - name: days/ns
-                        units: days/ns
-                        command: cat %OUTPUT% | grep  Benchmark | gawk 'END{print $8}' 
-
-                      - name: cputime
-                        units: secs
-                        command: cat %OUTPUT% | grep CPUTime | gawk '{print $4}'   
-                     
-                      - name: memory
-                        units: MB
-                        command: cat %OUTPUT%  | grep Memory | gawk '{print $6}'
- 
-              - name: namd_apoa1  
                 active: false
+                args: nucleosome146Katoms.namd  > nucleosome.out  2>nucleosome.err
+                outputs: 
+                   output: nucleosome.out                      
+                   another_output: KaBS_%NAME%_%NUMPROCS%.out          
+                    
+              - name: namd_apoa1  
+                active: true
+                numprocs: 2,4
                 args:  apoa1.namd   > apoa1.out 2>apoa1.err                        
-                analysis:  
-                   outputs: 
-                      output: apoa1.out  
-                      another_output: KaBS_%NAME%_%NUMPROCS%.out          
-                   metrics: 
-                      - name: wallclock
-                        units: secs
-                        command: cat %OUTPUT% | grep WallClock | gawk '{print $2}' 
-                   
-                      - name: days/ns
-                        units: days/ns
-                        command: cat %OUTPUT% | grep  Benchmark | gawk 'END{print $8}' 
-
-                      - name: cputime
-                        units: secs
-                        command: cat %OUTPUT% | grep CPUTime | gawk '{print $4}'   
-                     
-                      - name: memory
-                        units: MB
-                        command: cat %OUTPUT%  | grep Memory | gawk '{print $6}'
+                outputs: 
+                   output: apoa1.out  
+                   another_output: KaBS_%NAME%_%NUMPROCS%.out          
 
          - name: vasp
            active: false
            batch: LSF
            exe: vasp         
-           modules: module load gcc mpi-openmpi vasp
-           dataset:
+           modules:  module load gcc mpi-openmpi vasp
+           datasets:
               - name: vasp_Hg
                 active: true
                 args: 
-                analysis:  
-                   outputs: 
-                      outcar: OUTCAR
-                      oszicar: OSZICAR
-                      outcar_ref:  OUTCAR.ref
-                      oszicar_ref: OSZICAR.ref
-                   metrics: 
-                      - name: wallclock
-                        units: secs
-                        command: $cat %OUTCAR% | grep "Elapsed time" | gawk '{print $4}' 
-                  
+                outputs: 
+                   outcar: OUTCAR
+                   oszicar: OSZICAR
+                   outcar_ref:  OUTCAR.ref
+                   oszicar_ref: OSZICAR.ref
+                metrics: 
+                   - name: wallclock
+                     units: secs
+                     command: $cat %OUTCAR% | grep "Elapsed time" | gawk '{print $4}' 
+
          - name: siesta
            active: true
            batch: LSF
            exe: siesta
-           modules: module load gcc mpi-openmpi blas blacs  lapack scalapack siesta
-           dataset:
+           modules:  module load gcc mpi-openmpi blas blacs  lapack scalapack siesta
+           datasets:
               - name: siesta_test
                 active: true
-                args: < fen.fdf  > output.txt
-                analysis:  
-                   outputs:
-                      clock: CLOCK
-                      output: output.txt
-                      fenxml: fen.xml
-                      feneig: fen.EIG
-                   metrics: 
-                      - name: wallclock
-                        units: secs
-                        command: cat %CLOCK% | grep "End of run" | gawk '{print $4}'
-                      - name: AvgMem # Avg mem per node
-                        units: MB
-                        command: cat %OUTPUT% | grep "Node" | gawk '{print $10}' |  gawk 'BEGIN{sum=0 ; c=0}{ sum=sum+$1 ; c=c+1  }END{ print sum/c}'  
-                      - name: FinalEnergy
-                        units: eV
-                        command:  cat %OUTPUT%  | grep "Total =" | gawk '{print $4}' 
+                args: < fen.fdf  > output.txt 
+                outputs:
+                   clock: CLOCK
+                   output: output.txt
+                   fenxml: fen.xml
+                   feneig: fen.EIG
+                metrics: 
+                   - name: wallclock
+                     units: secs
+                     command: cat %CLOCK% | grep "End of run" | gawk '{print $4}'
+                   - name: AvgMem # Avg mem per node
+                     units: MB
+                     command: cat %OUTPUT% | grep "Node" | gawk '{print $10}' |  gawk 'BEGIN{sum=0 ; c=0}{ sum=sum+$1 ; c=c+1  }END{ print sum/c}'  
+                   - name: FinalEnergy
+                     units: eV
+                     command:  cat %OUTPUT%  | grep "Total =" | gawk '{print $4}' 
 
       FILESYSTEMS: 
          - name: gpfs_iozone3
            active: true
            batch: LSF
-           dataset:
+           numprocs: 1
+           modules:  module load gcc mpi-openmpi
+           outputs:
+             output: KaBS_%NAME%_%NUMPROCS%.out 
+             iozone: iozone.out
+           datasets:
                 - name: iozone3_408
-                  args: -Rab output.wks –g 2G  -I
+                  args: -Rab output.wks -g 2G  -I
                   exe: bin/iozone
                   dependencies: bin/* 
                   active: true
@@ -159,27 +144,21 @@ KaBS:
          - name: gpfs_mpi_io
            active: false
            batch: LSF
-           modules: module load gcc mpi-openmpi
+           modules:  module load gcc mpi-openmpi
            numprocs: 32
-           dataset:
+           exe: ./fs_test.x
+           outputs:
+             output: KaBS_%NAME%_%NUMPROCS%.out 
+           datasets:
                 - name: mpi_io_type2_Nto1_noStrided  # MPI-IO on Scratch N procs to 1 file
-                  active: true
-                  exe: ./fs_test.x
+                  active: true                
                   # 10 objects of 1GB to write by each proc 
                   args:  -type 2 -strided 0 -nobj 10 -size 1073741824  -target /scratch/naranjja/mpiio_testfile -deletefile -touch 2 -check 2
-                  analysis:
-                        outputs:
-                                output: KaBS_%NAME%_%NUMPROCS%.out 
                 
                 - name: mpi_io_type1_NtoN_noStrided  # MPI-IO on Scratch N procs to 1 file
                   active: true
-                  exe: ./fs_test.x
                   # 10 objects of 1GB to write by each proc 
                   args:  -type 2 -strided 0 -nobj 10 -size 1073741824  -target /scratch/naranjja/mpiio_testfile -deletefile -touch 2 -check 2
-                  analysis:
-                        outputs:
-                                output: KaBS_%NAME%_%NUMPROCS%.out 
-
 
       NETWORKS: 
          - name: infiniband_mpi
@@ -187,140 +166,110 @@ KaBS:
            active: true
            modules:  module load gcc mpi-openmpi    
            numprocs:  16,32,64         
-           dataset:           
+           datasets:           
                 - name: skampi-5.0.4-r0355
-                  active: true
+                  active: false
                   exe: ./skampi
                   dependencies:  ski/*.inc , ski/skampi_coll.ski 
                   args:  -i ski/skampi_coll.ski  -o skaoutf.txt
-                  analysis:
-                        outputs:
-                                output: skaoutf.txt                                              
+                  outputs:
+                    output: skaoutf.txt                                              
  
                 - name: imb_3.2.3                            
                   active: true  
                   exe: bin/IMB-MPI1 # Full path or  Relative to the current dir
                   dependencies:   #comma separated list of  files that will be copied to the run directory ... always relative to the 'source' dir
-                  args: 1>imb.output                     
-                  analysis:
-                        outputs: 
-                                output: imb.output
-                        metrics:
-                                - name: pingpong_BW
-                                  units: MB/secs
-                                  command: cat %OUTPUT% | grep -A28 "Benchmarking PingPong" |  gawk '$1 ~ /[0-9]/'  | gawk 'BEGIN{sum=0}{if ($1>=32768) sum=sum+$4  }END{ print sum/8}'
-
-                                - name: pingping_BW
-                                  units: MB/secs
-                                  command: cat %OUTPUT% | grep -A28 "Benchmarking PingPing" |  gawk '$1 ~ /[0-9]/'  | gawk 'BEGIN{sum=0}{if ($1>=32768) sum=sum+$4  }END{ print sum/8}'       
-
-                                - name: sendrecv_BW
-                                  units: MB/secs
-                                  command: cat %OUTPUT% | grep -B10  "Benchmarking Exchange" | head | gawk 'BEGIN{sum=0}{if ($1>=32768) sum=sum+$6  }END{ print sum/8}'
-
-                                - name: exchange_BW
-                                  units: MB/secs
-                                  command: cat %OUTPUT% | grep -B10  "Benchmarking Allreduce" | head | gawk 'BEGIN{sum=0}{if ($1>=32768) sum=sum+$6  }END{ print sum/8}'
- 
-                                - name: allreduce_avg_t
-                                  units: usecs
-                                  command: cat %OUTPUT% | grep -B10  "Benchmarking Reduce" | head | gawk 'BEGIN{sum=0}{if ($1>=32768) sum=sum+$5  }END{ print sum/8}'
- 
-                                - name: alltoall_avg_t
-                                  units: usecs
-                                  command: cat %OUTPUT% | grep -B10  "Benchmarking Bcast" | head | gawk 'BEGIN{sum=0}{if ($1>=32768) sum=sum+$5  }END{ print sum/8}'
- 
-                                - name: bcast_avg_t 
-                                  units: usecs
-                                  command: cat %OUTPUT% | grep -B10  "Benchmarking Barrier" | head | gawk 'BEGIN{sum=0}{if ($1>=32768) sum=sum+$5  }END{ print sum/8}'
+                  args: 1>imb.output                                       
+                  outputs: 
+                    output: imb.output
+                  metrics:
+                    - name: pingpong_BW
+                      units: MB/secs
+                      command: cat %OUTPUT% | grep -A28 "Benchmarking PingPong" |  gawk '$1 ~ /[0-9]/'  | gawk 'BEGIN{sum=0}{if ($1>=32768) sum=sum+$4  }END{ print sum/8}'
+                    - name: pingping_BW
+                      units: MB/secs
+                      command: cat %OUTPUT% | grep -A28 "Benchmarking PingPing" |  gawk '$1 ~ /[0-9]/'  | gawk 'BEGIN{sum=0}{if ($1>=32768) sum=sum+$4  }END{ print sum/8}'       
+                    - name: sendrecv_BW
+                      units: MB/secs
+                      command: cat %OUTPUT% | grep -B10  "Benchmarking Exchange" | head | gawk 'BEGIN{sum=0}{if ($1>=32768) sum=sum+$6  }END{ print sum/8}'
+                    - name: exchange_BW
+                      units: MB/secs
+                      command: cat %OUTPUT% | grep -B10  "Benchmarking Allreduce" | head | gawk 'BEGIN{sum=0}{if ($1>=32768) sum=sum+$6  }END{ print sum/8}'
+                    - name: allreduce_avg_t
+                      units: usecs
+                      command: cat %OUTPUT% | grep -B10  "Benchmarking Reduce" | head | gawk 'BEGIN{sum=0}{if ($1>=32768) sum=sum+$5  }END{ print sum/8}'
+                    - name: alltoall_avg_t
+                      units: usecs
+                      command: cat %OUTPUT% | grep -B10  "Benchmarking Bcast" | head | gawk 'BEGIN{sum=0}{if ($1>=32768) sum=sum+$5  }END{ print sum/8}'
+                    - name: bcast_avg_t 
+                      units: usecs
+                      command: cat %OUTPUT% | grep -B10  "Benchmarking Barrier" | head | gawk 'BEGIN{sum=0}{if ($1>=32768) sum=sum+$5  }END{ print sum/8}'
 
       SYNTHETICS:
          - name: lapack
            active: false
          
          - name: NAS
-           active: false
-           dataset:
-                 - name: NPB3.3.1
-                   active: false
+           active: true
+           batch: LSF
+           numprocs: 16
+           modules:  module load gcc mpi-openmpi
+           dependencies: bin/*.%NUMPROCS%
+           outputs:
+              output: mg.A.%NUMPROCS%.out
+              outputlsf: KaBS_%NAME%_%NUMPROCS%.out 
+              error:  KaBS_%NAME%_%NUMPROCS%.err
+           datasets:
+                 - name: NPB3.3-MPI
+                   active: true
+                   exe: ./bin/mg.A.%NUMPROCS%
+                   args:  1>mg.A.%NUMPROCS%.out 2>mg.A.%NUMPROCS%.err
            
          - name: hpcc
            active: true
            batch: LSF         
            exe: ./hpcc 
            args: 
-           modules: module load gcc atlas/3.8.4-sse3 mpi-openmpi   
+           modules:  module load gcc atlas/3.8.4-sse3 mpi-openmpi   
            dependencies: hpccinf.txt
-           dataset:
+           outputs:
+             hpccout: hpccoutf.txt
+           metrics:
+               - name: Procs
+                 units: ""
+                 command: cat  %HPCCOUT% | grep CommWorldProcs | gawk -F "=" '{print $2}'
+               - name: HPL
+                 units: TFlops
+                 command: cat  %HPCCOUT% | grep HPL_Tflops | gawk -F "=" '{print $2}'
+               - name: PTRANS
+                 units: GB/s
+                 command:  cat  %HPCCOUT% | grep  PTRANS_GBs | gawk -F "=" '{print $2}'
+               - name: MPIRandomAccess
+                 units: GUPs
+                 command:  cat  %HPCCOUT% | grep  MPIRandomAccess_GUPs | gawk -F "=" '{print $2}'                                  
+               - name: SingleSTREAM_Triad
+                 units: GB/s
+                 command: cat  %HPCCOUT% | grep  SingleSTREAM_Triad | gawk -F "=" '{print $2}'                                          
+               - name: FFT
+                 units: GFlop/s
+                 command: cat  %HPCCOUT% | grep  MPIFFT_Gflops | gawk -F "=" '{print $2}'                                          
+               - name: Single_DGEMM
+                 units: GFlop/s
+                 command: cat  %HPCCOUT% | grep  SingleDGEMM_Gflops| gawk -F "=" '{print $2}'
+               - name: Random_RingBandwidth
+                 units: GB/s
+                 command: cat  %HPCCOUT% | grep  RandomlyOrderedRingBandwidth_GBytes | gawk -F "=" '{print $2}'
+               - name: Random_RingLatency
+                 units: usecs
+                 command: cat  %HPCCOUT% | grep  RandomlyOrderedRingLatency_usec  | gawk -F "=" '{print $2}'           
+           datasets:
                  - name: with_atlas_32cpus
                    numprocs: 32
-                   active: true                   
-                   analysis:   
-                        outputs:
-                                hpccout: hpccoutf.txt
-                        metrics:
-                                - name: Procs
-                                  units: ""
-                                  command: cat  %HPCCOUT% | grep CommWorldProcs | gawk -F "=" '{print $2}'
-                                - name: HPL
-                                  units: TFlops
-                                  command: cat  %HPCCOUT% | grep HPL_Tflops | gawk -F "=" '{print $2}'
-                                - name: PTRANS
-                                  units: GB/s
-                                  command:  cat  %HPCCOUT% | grep  PTRANS_GBs | gawk -F "=" '{print $2}'
-                                - name: MPIRandomAccess
-                                  units: GUPs
-                                  command:  cat  %HPCCOUT% | grep  MPIRandomAccess_GUPs | gawk -F "=" '{print $2}'                                  
-                                - name: SingleSTREAM_Triad
-                                  units: GB/s
-                                  command: cat  %HPCCOUT% | grep  SingleSTREAM_Triad | gawk -F "=" '{print $2}'                                          
-                                - name: FFT
-                                  units: GFlop/s
-                                  command: cat  %HPCCOUT% | grep  MPIFFT_Gflops | gawk -F "=" '{print $2}'                                          
-                                - name: Single_DGEMM
-                                  units: GFlop/s
-                                  command: cat  %HPCCOUT% | grep  SingleDGEMM_Gflops| gawk -F "=" '{print $2}'
-                                - name: Random_RingBandwidth
-                                  units: GB/s
-                                  command: cat  %HPCCOUT% | grep  RandomlyOrderedRingBandwidth_GBytes | gawk -F "=" '{print $2}'
-                                - name: Random_RingLatency
-                                  units: usecs
-                                  command: cat  %HPCCOUT% | grep  RandomlyOrderedRingLatency_usec  | gawk -F "=" '{print $2}'
-                 
+                   active: true    
+                                  
                  - name: with_atlas_64cpus
                    numprocs: 64
                    active: true
-                   analysis:   
-                        outputs:
-                                hpccout: hpccoutf.txt
-                        metrics:
-                                - name: Procs
-                                  units: ""
-                                  command: cat  %HPCCOUT% | grep CommWorldProcs | gawk -F "=" '{print $2}'
-                                - name: HPL
-                                  units: TFlops
-                                  command: cat  %HPCCOUT% | grep HPL_Tflops | gawk -F "=" '{print $2}'
-                                - name: PTRANS
-                                  units: GB/s
-                                  command:  cat  %HPCCOUT% | grep  PTRANS_GBs | gawk -F "=" '{print $2}'
-                                - name: MPIRandomAccess
-                                  units: GUPs
-                                  command:  cat  %HPCCOUT% | grep  MPIRandomAccess_GUPs | gawk -F "=" '{print $2}'                                  
-                                - name: SingleSTREAM_Triad
-                                  units: GB/s
-                                  command: cat  %HPCCOUT% | grep  SingleSTREAM_Triad | gawk -F "=" '{print $2}'                                          
-                                - name: FFT
-                                  units: GFlop/s
-                                  command: cat  %HPCCOUT% | grep  MPIFFT_Gflops | gawk -F "=" '{print $2}'                                          
-                                - name: Single_DGEMM
-                                  units: GFlop/s
-                                  command: cat  %HPCCOUT% | grep  SingleDGEMM_Gflops| gawk -F "=" '{print $2}'
-                                - name: Random_RingBandwidth
-                                  units: GB/s
-                                  command: cat  %HPCCOUT% | grep  RandomlyOrderedRingBandwidth_GBytes | gawk -F "=" '{print $2}'
-                                - name: Random_RingLatency
-                                  units: usecs
-                                  command: cat  %HPCCOUT% | grep  RandomlyOrderedRingLatency_usec  | gawk -F "=" '{print $2}'
  
       ACCEPTANCE: 
         active: false                        
