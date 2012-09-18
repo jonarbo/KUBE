@@ -34,15 +34,6 @@ KaBS:
 
    BENCH: 
       APPS:
-         - name: cp2k
-           active: false
-
-         - name: gromacs
-           active: false
-
-         - name  : material_studio
-           active: false     
- 
          - name: namd
            active: true
            batch: LSF     
@@ -75,7 +66,7 @@ KaBS:
                     
               - name: namd_apoa1  
                 active: true
-                numprocs: 2,4
+                numprocs: 4
                 args:  apoa1.namd   > apoa1.out 2>apoa1.err                        
                 outputs: 
                    output: apoa1.out  
@@ -127,26 +118,45 @@ KaBS:
 
       FILESYSTEMS: 
          - name: gpfs_iozone3
-           active: true
+           active: false
            batch: LSF
            numprocs: 1
            modules:  module load gcc mpi-openmpi
-           outputs:
-             output: KaBS_%NAME%_%NUMPROCS%.out 
-             iozone: iozone.out
            datasets:
                 - name: iozone3_408
                   args: -Rab output.wks -g 2G  -I
                   exe: bin/iozone
                   dependencies: bin/* 
                   active: true
-           
+                  outputs:
+                    output: KaBS_%NAME%_%NUMPROCS%.out 
+                    iozone: iozone.tmp
+
          - name: gpfs_mpi_io
-           active: false
+           active: true
            batch: LSF
            modules:  module load gcc mpi-openmpi
            numprocs: 32
            exe: ./fs_test.x
+           metrics:
+             - name: Efective_BW_Write_avg
+               units: MB/s
+               command: cat  %OUTPUT% | grep  "Effective Bandwidth"  | gawk '{print $11}'  | head -n 1
+             - name: BW_Write_avg
+               units: MB/s
+               command: cat  %OUTPUT% | grep  "Write Bandwidth"  | gawk '{print $11}'  | head -n 1
+             - name: MPI_FileOpen_Write_avg
+               units: secs
+               command: cat  %OUTPUT% | grep  "MPI_File_Write_Open"  | gawk '{print $11}'  | head -n 1
+             - name: Efective_BW_Read_avg
+               units: MB/s
+               command:  cat  %OUTPUT% | grep  "Effective Bandwidth"  | gawk '{print $11}'  | tail  -n 1
+             - name: BW_Read_avg
+               units: MB/s
+               command: cat  %OUTPUT% | grep  "Write Bandwidth"  | gawk '{print $11}'  | tail -n 1
+             - name: MPI_FileOpen_Read_avg
+               units: secs
+               command: cat  %OUTPUT% | grep  "MPI_File_Write_Open"  | gawk '{print $11}'  | tail -n 1
            outputs:
              output: KaBS_%NAME%_%NUMPROCS%.out 
            datasets:
@@ -158,7 +168,7 @@ KaBS:
                 - name: mpi_io_type1_NtoN_noStrided  # MPI-IO on Scratch N procs to 1 file
                   active: true
                   # 10 objects of 1GB to write by each proc 
-                  args:  -type 2 -strided 0 -nobj 10 -size 1073741824  -target /scratch/naranjja/mpiio_testfile -deletefile -touch 2 -check 2
+                  args:  -type 1 -strided 0 -nobj 10 -size 1073741824  -target /scratch/naranjja/mpiio_testfile -deletefile -touch 2 -check 2
 
       NETWORKS: 
          - name: infiniband_mpi
@@ -206,25 +216,22 @@ KaBS:
                       command: cat %OUTPUT% | grep -B10  "Benchmarking Barrier" | head | gawk 'BEGIN{sum=0}{if ($1>=32768) sum=sum+$5  }END{ print sum/8}'
 
       SYNTHETICS:
-         - name: lapack
-           active: false
-         
          - name: NAS
            active: true
            batch: LSF
-           numprocs: 16
+           numprocs: 8, 16
            modules:  module load gcc mpi-openmpi
            dependencies: bin/*.%NUMPROCS%
-           outputs:
-              output: mg.A.%NUMPROCS%.out
-              outputlsf: KaBS_%NAME%_%NUMPROCS%.out 
-              error:  KaBS_%NAME%_%NUMPROCS%.err
            datasets:
                  - name: NPB3.3-MPI
                    active: true
                    exe: ./bin/mg.A.%NUMPROCS%
                    args:  1>mg.A.%NUMPROCS%.out 2>mg.A.%NUMPROCS%.err
-           
+                   outputs:
+                     output: mg.A.%NUMPROCS%.out
+                     outputlsf: KaBS_%NAME%_%NUMPROCS%.out 
+                     error:  KaBS_%NAME%_%NUMPROCS%.err          
+
          - name: hpcc
            active: true
            batch: LSF         
@@ -269,8 +276,5 @@ KaBS:
                                   
                  - name: with_atlas_64cpus
                    numprocs: 64
-                   active: true
- 
-      ACCEPTANCE: 
-        active: false                        
+                   active: true                
 ...

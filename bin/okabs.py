@@ -12,6 +12,7 @@ import datetime, time
 import subprocess	
 import shlex
 import math
+import copy
 
 # get the path to the current script
 cmd_folder = os.path.abspath(os.path.split(inspect.getfile( inspect.currentframe() ))[0])
@@ -354,6 +355,14 @@ set grid polar
 					first = False
 				else:
 					self.__analysisSynthetics(synth)		
+			first = True
+			for fs in self.a_filesys:
+				if first:	
+					self.analysis('f',fs)
+					first = False
+				else:
+					self.__analysisFilesystem(fs)		
+
 		
 		elif item == 'a':
 			self.log.plain("***********************************************")
@@ -412,7 +421,7 @@ set grid polar
 			os.makedirs(analysisd)
 
 		for dataset in app:
-			self.__analizeDataset(dataset,runsd,analysisd)			
+			self.__analyzeDataset(dataset,runsd,analysisd)			
 
 	def __analysisSynthetics(self,name):
 		self.log.log( name )
@@ -427,7 +436,7 @@ set grid polar
 			os.makedirs(analysisd)
 
 		for dataset in synth:	
-			self.__analizeDataset(dataset,runsd,analysisd)		
+			self.__analyzeDataset(dataset,runsd,analysisd)		
 
 	def __analysisFilesystem(self,name):
 		self.log.log( name )
@@ -441,8 +450,8 @@ set grid polar
 		if not os.path.exists(analysisd):
 			os.makedirs(analysisd)
 		
-		for dataset in filesys:	
-			self.__analizeDataset(dataset,runsd,analysisd)	
+		for dataset in fs:
+			self.__analyzeDataset(dataset,runsd,analysisd)	
 			
 			
 	def __analysisNet(self,name):
@@ -457,10 +466,10 @@ set grid polar
 		if not os.path.exists(analysisd):
 			os.makedirs(analysisd)
 
-		for dataset in net:	
-			self.__analizeDataset(dataset,runsd,analysisd)		
+		for dataset in net:		
+			self.__analyzeDataset(dataset,runsd,analysisd)		
 
-	def __analizeDataset(self,dataset,runsd,analysisd):
+	def __analyzeDataset(self,dataset,runsd,analysisd):
 		rundir = runsd + dataset['name']	
 		analysisdir = analysisd +dataset['name']
 		if not os.path.exists(analysisdir):
@@ -514,7 +523,7 @@ set grid polar
 								break		
 		u = runs			
 		if len(u) == 0:
-			self.log.plain("No new runs to analize")	
+			self.log.plain("No new runs to analyze")	
 			return
 		# create analysis dir for each  run
 		for i in u:
@@ -556,7 +565,7 @@ set grid polar
 							self.log.error("Analysis not completed!!!")
 							failed = True
 							break		
-				
+
 				if failed == True:
 					continue
 				
@@ -570,28 +579,45 @@ set grid polar
 					metrics = []
 					o = open( "analysis.csv","w")
 					o.write(  "\"metric\",\"value\",\"units\"\n" )
-					for metric in dataset['metrics']:
-						# Up to this point, values in Metric may contain %VALUES% to be replaced ... so we have to do it now
-						name=None
-						command=None
-						units=None
+
+					for metric in dataset['metrics']:						
+						# Up to this point, values in Metrics may contain %VALUES% to be replaced ... so we have to do it now
+						name= metric['name']
+						command=metric['command']
+						units=metric['units']
 						
 						# replace references to the output section						
 						for outp in  dataset['outputs'].keys():
-							#if not re.match( "#"+cpus+"#",outp  ):
 							if not re.match( "#\d+#",outp  ):
 								reple = re.compile( "%"+str(outp).upper()+"%" )
 								if dataset['outputs'].keys().count( "#"+cpus+"#"+outp) != 0:
-									name    = reple.sub(dataset['outputs']["#"+cpus+"#"+outp] , metric['name'] )	
-									units   = reple.sub(dataset['outputs']["#"+cpus+"#"+outp] , metric['units'] )	
-									command = reple.sub(dataset['outputs']["#"+cpus+"#"+outp] , metric['command'] )	
+									name    = reple.sub(  str(dataset['outputs']["#"+cpus+"#"+outp]) , name )	
+									units   = reple.sub(  str(dataset['outputs']["#"+cpus+"#"+outp]) ,units )	
+									command = reple.sub(  str(dataset['outputs']["#"+cpus+"#"+outp]) ,command )	
 								else:
-									name    = reple.sub(dataset['outputs'][outp] , metric['name'] )	
-									units   = reple.sub(dataset['outputs'][outp] , metric['units'] )	
-									command = reple.sub(dataset['outputs'][outp] , metric['command'] )	
-								
-						# Now replace other variables from the dataset... (TODO)		
-								
+									name    = reple.sub(  str(dataset['outputs'][outp]) ,name )	
+									units   = reple.sub(  str(dataset['outputs'][outp]) , units)	
+									command = reple.sub(  str(dataset['outputs'][outp]) , command )	
+						
+						# Now replace other variables from the dataset...
+						for tagp in  dataset.keys():
+							if tagp == 'numprocs':
+								reple = re.compile( "%NUMPROCS%" )
+								command = reple.sub( cpus , command)
+							else:	
+								if tagp != 'outputs' and tagp != 'metrics' and not isinstance(dataset[tagp],dict):
+									if not re.match( "#\d+#",tagp  ):
+										reple = re.compile( "%"+str(tagp).upper()+"%" )
+										if dataset.keys().count( "#"+cpus+"#"+tagp) != 0:
+											name    = reple.sub( str(dataset["#"+cpus+"#"+tagp]) ,name )	
+											units   = reple.sub( str(dataset["#"+cpus+"#"+tagp]) , units )	
+											command = reple.sub( str(dataset["#"+cpus+"#"+tagp]) , command )	
+										else:
+											name    = reple.sub( str(dataset[tagp]) , name )	
+											units   = reple.sub( str(dataset[tagp]) , units )	
+											command = reple.sub( str(dataset[tagp]) , command)	
+						
+							
 						#o.write( "\"" +metric['name']+ "\"," + "\"" + syscall( metric['command'])[0].strip() +"\"," +"\"" + metric['units'] + "\"\n"  ) 
 						o.write( "\"" + name + "\"," + "\"" + syscall(command)[0].strip() +"\"," +"\"" + units + "\"\n"  ) 
 						radio.append ( syscall( command )[0].strip() )				
@@ -780,7 +806,10 @@ set grid polar
 				return
 				
 			if dataset['tasks_per_node'] != None and  dataset['tasks_per_node'] != '':
-				n = str( int(round ( float(p)/float(dataset['tasks_per_node'])))  )			
+				if ( int(p)%int(dataset['tasks_per_node'])) == 0 :
+					n = str( int(( float(p)/float(dataset['tasks_per_node'])))  )	
+				else:
+					n = str( int(round(float(p)/float(dataset['tasks_per_node'])+0.5))  )			
 				run_id = dataset['name'] + "_" + p + "cpus_" + n + "nodes_"  + str(newname)					
 			else:
 				run_id = dataset['name'] + "_" + p + "cpus_"  + str(newname)
@@ -798,7 +827,10 @@ set grid polar
 				now = datetime.datetime.now()
 				newname = str(now.strftime("%Y-%m-%dT%H:%M:%S"))
 				if dataset['tasks_per_node'] != None and  dataset['tasks_per_node'] != '':
-					n = str( int(round ( float(p)/float(dataset['tasks_per_node'])))  )			
+					if ( int(p)%int(dataset['tasks_per_node'])) == 0 :
+						n = str( int(( float(p)/float(dataset['tasks_per_node'])))  )	
+					else:
+						n = str( int(round(float(p)/float(dataset['tasks_per_node'])+0.5))  )								
 					run_id = dataset['name'] + "_" + p + "cpus_" + n + "nodes_"  + str(newname)					
 				else:
 					run_id = dataset['name'] + "_" + p + "cpus_"  + str(newname)
@@ -840,8 +872,7 @@ set grid polar
 							file = glob.glob(os.path.join( source + dataset['name']+ '/'  , input))
 							for f in file:
 								shutil.copy( f ,os.path.dirname("./" + input )  )
-						
-				print exe		
+							
 				if not re.match("/",exe): # Is not in full path format
 					if  os.path.exists(source + dataset['name']+ '/' + exe ):
 						if not os.path.exists( os.path.dirname("./" + exe)) :
@@ -1040,7 +1071,7 @@ set grid polar
 					Log.Level =3
 					self.log.log("dataset",str( who[k][l]['name']))
 					for litem in  who[k][l]:
-						if litem == 'numprocs' or litem == 'tasks_per_node' or litem == 'exe' or litem == 'batch' and  not re.match("#\d+#",litem):
+						if litem == 'numprocs' or litem == 'tasks_per_node' or litem == 'exe' or litem == 'args' or litem == 'batch' and  not re.match("#\d+#",litem):
 							Log.Level = 4
 							self.log.log(litem ,str( who[k][l][litem])  )
 		else:
@@ -1282,7 +1313,7 @@ set grid polar
 									#del dataset[rkey]
 								else:
 									dataset[rkey]= retValue 					
-									
+								
 		# Replace inline variables in the ['metrics'] section inside each dataset ...
 		for name in item.keys():	
 			for dataset in item[name]:
@@ -1294,8 +1325,8 @@ set grid polar
 					if ( dataset.keys().count('metrics') != 0 ):
 						for metric in dataset['metrics']:
 							for elem in metric:
-								metric[elem] = reple.sub(dataset['outputs'][sstr],metric[elem])									
-		
+								metric[elem] = reple.sub(dataset['outputs'][sstr],metric[elem])		
+									
 	def __updateActiveElements(self,a_elems,mstr):	
 		repeatf = True
 		while repeatf:
@@ -1326,7 +1357,7 @@ set grid polar
 						if batch['name'] == a['batch']:
 							for key in batch.keys():
 								if key!="name" and key!="script" and key!="monitor" and key!="submit" and a.keys().count(key)==0 :
-									a[key] = batch[key]				
+									a[key] = copy.deepcopy( batch[key] )	 			
 							break # step out the batch loop
 					break # step out self.apps loop				
 		# populate self.a_XXX -> datasets with the XXX parameters if they are not already set in the dataset:			
@@ -1337,21 +1368,19 @@ set grid polar
 						for sk in a.keys():
 							if sk=="batch": # Force the dataset to use always the batch system defined  for the network
 											# the 'batch' parameter is global to all the network datasets 
-								dataset[sk] = a[sk]
+								dataset[sk] = a[sk] # no deepcopy needed as we want a reference to the batch system
 							elif  dataset.keys().count(sk)==0 and sk!="name" and sk!="dataset" and sk!="active" :
 								if a[sk] != None:
-									if sk == 'outputs':
-										for o in a[sk].keys():
-											if  dataset.keys().count(sk)==0:
-												dataset[sk]={}											
-											dataset[sk][o] = a[sk][o] 											
-									elif sk == 'metrics':
-										for m in  a[sk]:
-											if dataset.keys().count(sk)==0:
-												dataset[sk]=[]
-											dataset[sk].append(m)
-									else:											
-										dataset[sk] = a[sk] 	
+									dataset[sk] = copy.deepcopy(a[sk])
+# 									if sk == 'outputs':
+# 										for o in a[sk].keys():
+# 											if  dataset.keys().count(sk)==0:
+# 												dataset[sk]={}											
+# 											dataset[sk][o] =  copy.deepcopy( a[sk][o] ) 											
+# 									elif sk == 'metrics':
+# 										dataset[sk] = copy.deepcopy(a[sk])
+# 									else:											
+# 										dataset[sk] = a[sk] 	
 								else:
 									dataset[sk] = "" 		
 													
@@ -1633,6 +1662,8 @@ if __name__ == "__main__":
  		assert False, "unhandled option"
  			
 	sys.exit(0)
+	
+	
 
 			
 			
