@@ -1536,7 +1536,7 @@ if __name__ == "__main__":
 
 	# ARGS processing
 	usage = "%prog <Option> [ [<Selector>] [<arg>] ]"
-	parser = optparse.OptionParser(usage=usage,version='%prog version 0.8')
+	parser = optparse.OptionParser(usage=usage,version='%prog version 0.9')
 	parser.add_option("--clean", action="store_true", help="Remove all stored results from previous runs and analysis", default=False,dest='clean')
 	parser.add_option("-d", "--debug", action="store_true", help="Debug mode: Show the actions to be performed", default=False,dest='d')
 	parser.add_option("-r", "--run", action="store_true",   help="Run the whole benchmark or a specific item according to the 'Selectors' below", default=False,dest='r')
