@@ -1,0 +1,179 @@
+Job  /apps/admin/lsf/7.0/linux2.6-glibc2.3-x86_64/bin/openmpi_wrapper ./hpcc
+
+TID   HOST_NAME   COMMAND_LINE            STATUS            TERMINATION_TIME
+===== ========== ================  =======================  ===================
+00000 cn053-ib   ./hpcc            Done                     09/01/2012 17:21:26
+00001 cn053-ib   ./hpcc            Done                     09/01/2012 17:21:26
+00002 cn053-ib   ./hpcc            Done                     09/01/2012 17:21:26
+00003 cn053-ib   ./hpcc            Done                     09/01/2012 17:21:26
+00004 cn053-ib   ./hpcc            Done                     09/01/2012 17:21:26
+00005 cn053-ib   ./hpcc            Done                     09/01/2012 17:21:26
+00006 cn053-ib   ./hpcc            Done                     09/01/2012 17:21:26
+00007 cn053-ib   ./hpcc            Done                     09/01/2012 17:21:26
+00008 cn031-ib   ./hpcc            Done                     09/01/2012 17:21:26
+00009 cn031-ib   ./hpcc            Done                     09/01/2012 17:21:26
+00010 cn031-ib   ./hpcc            Done                     09/01/2012 17:21:26
+00011 cn031-ib   ./hpcc            Done                     09/01/2012 17:21:26
+00012 cn031-ib   ./hpcc            Done                     09/01/2012 17:21:26
+00013 cn031-ib   ./hpcc            Done                     09/01/2012 17:21:26
+00014 cn031-ib   ./hpcc            Done                     09/01/2012 17:21:26
+00015 cn031-ib   ./hpcc            Done                     09/01/2012 17:21:26
+00016 ci083-ib   ./hpcc            Done                     09/01/2012 17:21:26
+00017 ci083-ib   ./hpcc            Done                     09/01/2012 17:21:26
+00018 ci083-ib   ./hpcc            Done                     09/01/2012 17:21:26
+00019 ci083-ib   ./hpcc            Done                     09/01/2012 17:21:26
+00020 ci083-ib   ./hpcc            Done                     09/01/2012 17:21:26
+00021 ci083-ib   ./hpcc            Done                     09/01/2012 17:21:26
+00022 ci083-ib   ./hpcc            Done                     09/01/2012 17:21:26
+00023 ci083-ib   ./hpcc            Done                     09/01/2012 17:21:26
+00024 ci077-ib   ./hpcc            Done                     09/01/2012 17:21:26
+00025 ci077-ib   ./hpcc            Done                     09/01/2012 17:21:26
+00026 ci077-ib   ./hpcc            Done                     09/01/2012 17:21:26
+00027 ci077-ib   ./hpcc            Done                     09/01/2012 17:21:26
+00028 ci077-ib   ./hpcc            Done                     09/01/2012 17:21:26
+00029 ci077-ib   ./hpcc            Done                     09/01/2012 17:21:26
+00030 ci077-ib   ./hpcc            Done                     09/01/2012 17:21:26
+00031 ci077-ib   ./hpcc            Done                     09/01/2012 17:21:26
+
+------------------------------------------------------------
+Sender: LSF System <lsfadmin@ci077-ib>
+Subject: Job 628403: <#!/bin/bash -l; #BSUB -o hpcc.out;#BSUB -e hpcc.err;#BSUB -q rh6_q2hr ;#BSUB -W 20 ;#BSUB -n 32;#BSUB -a openmpi;#BSUB -R span[ptile=8]; module purge;module load gcc atlas/3.8.4-sse3 mpi-openmpi; mpirun.lsf ./hpcc  > Done
+
+Job <#!/bin/bash -l; #BSUB -o hpcc.out;#BSUB -e hpcc.err;#BSUB -q rh6_q2hr ;#BSUB -W 20 ;#BSUB -n 32;#BSUB -a openmpi;#BSUB -R span[ptile=8]; module purge;module load gcc atlas/3.8.4-sse3 mpi-openmpi; mpirun.lsf ./hpcc  > was submitted from host <ct001-ib> by user <naranjja> in cluster <Noor>.
+Job was executed on host(s) <8*ci077-ib>, in queue <rh6_q2hr>, as user <naranjja> in cluster <Noor>.
+                            <8*ci083-ib>
+                            <8*cn031-ib>
+                            <8*cn053-ib>
+</home/naranjja> was used as the home directory.
+</home/naranjja/Devel/KaBS/bench/synthetic/hpcc/with_atlas> was used as the working directory.
+Started at Sat Sep  1 17:20:37 2012
+Results reported at Sat Sep  1 17:21:44 2012
+
+Your job looked like:
+
+------------------------------------------------------------
+# LSBATCH: User input
+#!/bin/bash -l
+
+#BSUB -o hpcc.out
+#BSUB -e hpcc.err
+#BSUB -q rh6_q2hr 
+#BSUB -W 20 
+#BSUB -n 32
+#BSUB -a openmpi
+#BSUB -R span[ptile=8]
+
+module purge
+module load gcc atlas/3.8.4-sse3 mpi-openmpi
+
+mpirun.lsf ./hpcc  
+
+------------------------------------------------------------
+
+Successfully completed.
+
+Resource usage summary:
+
+    CPU time   :   1446.84 sec.
+    Max Processes  :        46
+    Max Threads    :        80
+
+The output (if any) is above this job summary.
+
+
+
+PS:
+
+Read file <hpcc.err> for stderr output of this job.
+
+Job  /apps/admin/lsf/7.0/linux2.6-glibc2.3-x86_64/bin/openmpi_wrapper ./hpcc
+
+TID   HOST_NAME   COMMAND_LINE            STATUS            TERMINATION_TIME
+===== ========== ================  =======================  ===================
+00000 cn052-ib   ./hpcc            Done                     09/02/2012 09:53:43
+00001 cn052-ib   ./hpcc            Done                     09/02/2012 09:53:43
+00002 cn052-ib   ./hpcc            Done                     09/02/2012 09:53:43
+00003 cn052-ib   ./hpcc            Done                     09/02/2012 09:53:43
+00004 cn052-ib   ./hpcc            Done                     09/02/2012 09:53:43
+00005 cn052-ib   ./hpcc            Done                     09/02/2012 09:53:43
+00006 cn052-ib   ./hpcc            Done                     09/02/2012 09:53:43
+00007 cn052-ib   ./hpcc            Done                     09/02/2012 09:53:43
+00008 cn030-ib   ./hpcc            Done                     09/02/2012 09:53:43
+00009 cn030-ib   ./hpcc            Done                     09/02/2012 09:53:43
+00010 cn030-ib   ./hpcc            Done                     09/02/2012 09:53:43
+00011 cn030-ib   ./hpcc            Done                     09/02/2012 09:53:43
+00012 cn030-ib   ./hpcc            Done                     09/02/2012 09:53:43
+00013 cn030-ib   ./hpcc            Done                     09/02/2012 09:53:43
+00014 cn030-ib   ./hpcc            Done                     09/02/2012 09:53:43
+00015 cn030-ib   ./hpcc            Done                     09/02/2012 09:53:43
+00016 ci082-ib   ./hpcc            Done                     09/02/2012 09:53:43
+00017 ci082-ib   ./hpcc            Done                     09/02/2012 09:53:43
+00018 ci082-ib   ./hpcc            Done                     09/02/2012 09:53:43
+00019 ci082-ib   ./hpcc            Done                     09/02/2012 09:53:43
+00020 ci082-ib   ./hpcc            Done                     09/02/2012 09:53:43
+00021 ci082-ib   ./hpcc            Done                     09/02/2012 09:53:43
+00022 ci082-ib   ./hpcc            Done                     09/02/2012 09:53:43
+00023 ci082-ib   ./hpcc            Done                     09/02/2012 09:53:43
+00024 cn031-ib   ./hpcc            Done                     09/02/2012 09:53:43
+00025 cn031-ib   ./hpcc            Done                     09/02/2012 09:53:43
+00026 cn031-ib   ./hpcc            Done                     09/02/2012 09:53:43
+00027 cn031-ib   ./hpcc            Done                     09/02/2012 09:53:43
+00028 cn031-ib   ./hpcc            Done                     09/02/2012 09:53:43
+00029 cn031-ib   ./hpcc            Done                     09/02/2012 09:53:43
+00030 cn031-ib   ./hpcc            Done                     09/02/2012 09:53:43
+00031 cn031-ib   ./hpcc            Done                     09/02/2012 09:53:43
+
+------------------------------------------------------------
+Sender: LSF System <lsfadmin@cn031-ib>
+Subject: Job 628515: <#!/bin/bash -l; #BSUB -o hpcc.out;#BSUB -e hpcc.err;#BSUB -q rh6_q2hr ;#BSUB -W 20 ;#BSUB -n 32;#BSUB -a openmpi;#BSUB -R span[ptile=8]; module purge;module load gcc atlas/3.8.4-sse3 mpi-openmpi; mpirun.lsf ./hpcc  > Done
+
+Job <#!/bin/bash -l; #BSUB -o hpcc.out;#BSUB -e hpcc.err;#BSUB -q rh6_q2hr ;#BSUB -W 20 ;#BSUB -n 32;#BSUB -a openmpi;#BSUB -R span[ptile=8]; module purge;module load gcc atlas/3.8.4-sse3 mpi-openmpi; mpirun.lsf ./hpcc  > was submitted from host <ct001-ib> by user <naranjja> in cluster <Noor>.
+Job was executed on host(s) <8*cn031-ib>, in queue <rh6_q2hr>, as user <naranjja> in cluster <Noor>.
+                            <8*ci082-ib>
+                            <8*cn030-ib>
+                            <8*cn052-ib>
+</home/naranjja> was used as the home directory.
+</home/naranjja/Devel/KaBS/bench/synthetic/hpcc/with_atlas> was used as the working directory.
+Started at Sun Sep  2 09:35:01 2012
+Results reported at Sun Sep  2 09:54:02 2012
+
+Your job looked like:
+
+------------------------------------------------------------
+# LSBATCH: User input
+#!/bin/bash -l
+
+#BSUB -o hpcc.out
+#BSUB -e hpcc.err
+#BSUB -q rh6_q2hr 
+#BSUB -W 20 
+#BSUB -n 32
+#BSUB -a openmpi
+#BSUB -R span[ptile=8]
+
+module purge
+module load gcc atlas/3.8.4-sse3 mpi-openmpi
+
+mpirun.lsf ./hpcc  
+
+------------------------------------------------------------
+
+Successfully completed.
+
+Resource usage summary:
+
+    CPU time   :  35817.00 sec.
+    Max Memory :        32 GB
+    Max Swap   :        32 GB
+
+    Max Processes  :        73
+    Max Threads    :       107
+
+The output (if any) is above this job summary.
+
+
+
+PS:
+
+Read file <hpcc.err> for stderr output of this job.
+

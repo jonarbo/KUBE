@@ -1,0 +1,10 @@
+Unloading module gcc version 4.6.0
+Initial gcc version: 4.6.0
+Current gcc version: 4.4.4
+Unloading module mpi-openmpi version 1.4.3-gcc-4.6.0
+Current mpi-openmpi version: none
+Loading module gcc version 4.6.0
+Initial gcc version: 4.4.4
+Current gcc version: 4.6.0
+Loading module mpi-openmpi version 1.4.3-gcc-4.6.0
+Current mpi-openmpi version: 1.4.3
