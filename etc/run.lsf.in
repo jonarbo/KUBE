@@ -1,8 +1,8 @@
 #!/bin/bash -l
 
 #BSUB -J %NAME%
-#BSUB -o KaBS_%NAME%_%NUMPROCS%.out
-#BSUB -e KaBS_%NAME%_%NUMPROCS%.err
+#BSUB -o KUBE_%NAME%_%NUMPROCS%.out
+#BSUB -e KUBE_%NAME%_%NUMPROCS%.err
 #BSUB -q %QUEUE% 
 #BSUB -W %WALLCLOCK%
 #BSUB -n %NUMPROCS%

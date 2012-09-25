@@ -1,14 +1,14 @@
 %YAML 1.2
 ---
-KaBS:
-   HOME: /home/naranjja/Devel/KaBS
+KUBE:
+   HOME: /home/naranjja/Devel/KUBE
 
-   OUTPUTS: results  # if the leading "/" is provided then the absolute path is taken, otherwise the relative path to HOME ([KaBS][HOME])  will be used       
+   OUTPUTS: results  # if the leading "/" is provided then the absolute path is taken, otherwise the relative path to HOME ([KUBE][HOME])  will be used       
 
    BATCH:
         # for the batch systems with a script defined, the submission command will be: <command> <parameters> <script>
         - name: LSF
-          script: run.lsf.in # if the leading "/" is provided then the absolute path is taken, otherwise the relative path to [KaBS][HOME]/etc  will be used          
+          script: run.lsf.in # if the leading "/" is provided then the absolute path is taken, otherwise the relative path to [KUBE][HOME]/etc  will be used          
           submit: 
                 command: bsub 
                 parameters:  < 
@@ -61,7 +61,7 @@ KaBS:
                 args: nucleosome146Katoms.namd  > nucleosome.out  2>nucleosome.err
                 outputs: 
                    output: nucleosome.out                      
-                   another_output: KaBS_%NAME%_%NUMPROCS%.out          
+                   another_output: KUBE_%NAME%_%NUMPROCS%.out          
                     
               - name: namd_apoa1  
                 active: true
@@ -69,7 +69,7 @@ KaBS:
                 args:  apoa1.namd   > apoa1.out 2>apoa1.err                        
                 outputs: 
                    output: apoa1.out  
-                   another_output: KaBS_%NAME%_%NUMPROCS%.out          
+                   another_output: KUBE_%NAME%_%NUMPROCS%.out          
 
          - name: vasp
            active: false
@@ -156,7 +156,7 @@ KaBS:
                units: secs
                command: cat  %OUTPUT% | grep  "MPI_File_Write_Open"  | gawk '{print $11}'  | tail -n 1
            outputs:
-             output: KaBS_%NAME%_%NUMPROCS%.out 
+             output: KUBE_%NAME%_%NUMPROCS%.out 
            datasets:
                 - name: mpi_io_type2_Nto1_noStrided  # MPI-IO on Scratch N procs to 1 file
                   active: true                
@@ -227,8 +227,8 @@ KaBS:
                    args:  1>mg.A.%NUMPROCS%.out 2>mg.A.%NUMPROCS%.err
                    outputs:
                      output: mg.A.%NUMPROCS%.out
-                     outputlsf: KaBS_%NAME%_%NUMPROCS%.out 
-                     error:  KaBS_%NAME%_%NUMPROCS%.err          
+                     outputlsf: KUBE_%NAME%_%NUMPROCS%.out 
+                     error:  KUBE_%NAME%_%NUMPROCS%.err          
 
          - name: hpcc
            active: true
