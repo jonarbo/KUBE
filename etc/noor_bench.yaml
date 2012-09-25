@@ -7,7 +7,6 @@ KaBS:
 
    BATCH:
         # for the batch systems with a script defined, the submission command will be: <command> <parameters> <script>
-        # if parameter is '<', it might be changed by 'cat <script> | <command>'
         - name: LSF
           script: run.lsf.in # if the leading "/" is provided then the absolute path is taken, otherwise the relative path to [KaBS][HOME]/etc  will be used          
           submit: 
@@ -26,7 +25,7 @@ KaBS:
         # for a  manual launcher the submission command will be: <command> <parameters> <exe> <args>
         # variables %XXX% specific to the dataset will be replaced at the moment the script is generated
         # Other %XXX% variables can be used in the 'submit' section if they are defined..ie: %hostslistfile% 
-        - name: NONE
+        - name: MANUAL
           hostslistfile: hostnames      
           submit: 
                 command: mpirun 
@@ -58,7 +57,7 @@ KaBS:
            # here goes the specific dataset configuration
            datasets: 
               - name: namd_nucleosome146Katoms
-                active: false
+                active: true
                 args: nucleosome146Katoms.namd  > nucleosome.out  2>nucleosome.err
                 outputs: 
                    output: nucleosome.out                      
@@ -66,7 +65,7 @@ KaBS:
                     
               - name: namd_apoa1  
                 active: true
-                numprocs: 4
+                numprocs: 4, 8 ,16
                 args:  apoa1.namd   > apoa1.out 2>apoa1.err                        
                 outputs: 
                    output: apoa1.out  
@@ -118,19 +117,18 @@ KaBS:
 
       FILESYSTEMS: 
          - name: gpfs_iozone3
-           active: false
-           batch: LSF
+           active: true
+           batch: None
            numprocs: 1
            modules:  module load gcc mpi-openmpi
            datasets:
                 - name: iozone3_408
-                  args: -Rab output.wks -g 2G  -I
+                  args: -Rab output.wks -g 1G  -I | tee iozone.out
                   exe: bin/iozone
                   dependencies: bin/* 
                   active: true
                   outputs:
-                    output: KaBS_%NAME%_%NUMPROCS%.out 
-                    iozone: iozone.tmp
+                    iozone: iozone.out
 
          - name: gpfs_mpi_io
            active: true
@@ -218,7 +216,7 @@ KaBS:
       SYNTHETICS:
          - name: NAS
            active: true
-           batch: LSF
+           batch: LSF 
            numprocs: 8, 16
            modules:  module load gcc mpi-openmpi
            dependencies: bin/*.%NUMPROCS%

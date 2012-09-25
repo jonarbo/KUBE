@@ -31,7 +31,7 @@ def clean(dir):
 		else:
 			os.remove(dir+"/"+d) 			
 
-def syscall(str):	
+def syscall(str, wait = True ):	
 	"""Wrapper function to make a system call where pipes are allowed"""
   	cmds = str.split("|")
 	cmds = list(map(shlex.split,cmds))
@@ -43,7 +43,9 @@ def syscall(str):
 		p.append(subprocess.Popen(cmd,stdin=stdout_old,stdout=subprocess.PIPE,stderr=subprocess.PIPE))
 		stdout_old = p[-1].stdout
 		stderr_old = p[-1].stderr
-	return p[-1].communicate()
+	
+	if 	wait:
+		return p[-1].communicate()
 
 def frange(start, end=None, inc=None):
     """A range function, that does accept float increments..."""
@@ -162,7 +164,13 @@ class KABS:
 			to the tags in a dataset will be done here
 		"""
 		batch =  self.__getBatchSystem(whichdataset)	
-		if batch != None and batch['name'] != "NONE":
+		
+		if batch == None:	
+			if whichdataset.keys().count('args') != 0:  # other values should be mandatory and checked when file correctness is executed
+				data = str(whichdataset['exe'] )+ " " + str(whichdataset['args'] )
+			else:
+				data = str(whichdataset['exe'] )
+		elif  batch['name'] != "MANUAL":
 			submit_script = batch['script']
 			file = open(submit_script,'r')
 			data = file.read()
@@ -502,25 +510,26 @@ set grid polar
 							
 		# now remove from the list the runs that are still running ...
 		batch = self.__getBatchSystem(dataset)
-		cmd = None		
-		if batch.keys().count('monitor') != 0:
-			cmd =  batch['monitor']
-			if cmd != None:
-				repeat = True
-				while repeat:
-					repeat = False
-					for r in runs:
-						files = os.listdir(rundir + "/" + r)
-						for f in files:
-							if re.match("batch.jobid",f) :
-								jobid = re.search("\d+$",f).group(0)
-								ncmd = re.sub("%JOBID%",jobid,cmd) 
-								out,err = syscall( ncmd )	
-								if out.strip()==jobid.strip():
-									# the job is running ... remove it from the list
-									runs.remove(r)
-									repeat = True										
-								break		
+		if batch != None:
+			cmd = None		
+			if batch.keys().count('monitor') != 0:
+				cmd =  batch['monitor']
+				if cmd != None:
+					repeat = True
+					while repeat:
+						repeat = False
+						for r in runs:
+							files = os.listdir(rundir + "/" + r)
+							for f in files:
+								if re.match("batch.jobid",f) :
+									jobid = re.search("\d+$",f).group(0)
+									ncmd = re.sub("%JOBID%",jobid,cmd) 
+									out,err = syscall( ncmd )	
+									if out.strip()==jobid.strip():
+										# the job is running ... remove it from the list
+										runs.remove(r)
+										repeat = True										
+									break		
 		u = runs			
 		if len(u) == 0:
 			self.log.plain("No new runs to analyze")	
@@ -805,7 +814,7 @@ set grid polar
 				self.log.warning("Warning","No valid proc found ... dataset " + self.log.bold( str( dataset['name'] ))  + " skipped")
 				return
 				
-			if dataset['tasks_per_node'] != None and  dataset['tasks_per_node'] != '':
+			if dataset.keys().count('tasks_per_node')!=0 and dataset['tasks_per_node'] != None and  dataset['tasks_per_node'] != '':
 				if ( int(p)%int(dataset['tasks_per_node'])) == 0 :
 					n = str( int(( float(p)/float(dataset['tasks_per_node'])))  )	
 				else:
@@ -826,7 +835,7 @@ set grid polar
 				print "Resuming" 
 				now = datetime.datetime.now()
 				newname = str(now.strftime("%Y-%m-%dT%H:%M:%S"))
-				if dataset['tasks_per_node'] != None and  dataset['tasks_per_node'] != '':
+				if dataset.keys().count('tasks_per_node')!=0 and dataset['tasks_per_node'] != None and  dataset['tasks_per_node'] != '':
 					if ( int(p)%int(dataset['tasks_per_node'])) == 0 :
 						n = str( int(( float(p)/float(dataset['tasks_per_node'])))  )	
 					else:
@@ -883,10 +892,21 @@ set grid polar
 						self.log.warning("Warning","Can't copy exe file. File not found. Plese check the benchmark and the configuration file")
 						sys.exit(1)
 	
-			failed = False				
+			failed = False			
 			# submit or run job
-			if  dataset['batch'] == "NONE":
+			if  dataset.keys().count('batch')==0 or dataset['batch'] == 'None' :
 				# No batch system found .... 
+				syscall( data, False )
+				tops = data.split("|")[0].split()
+				self.log.warning("Running"," ".join(tops))
+				checkcmd = "ps -fea | grep \"" + " ".join(tops)  + "\" | grep -v grep  | wc -l "				
+				out,err = syscall (checkcmd)
+				if str(out).strip().isdigit():
+					print "... Running " + str(out).strip() + " instances" 
+				else:
+					self.log.error("Command line execution","It seems the task is not running, please confirm it yourself.")
+
+			elif  dataset['batch'] == "MANUAL":
 				syscall( data )
 			else:
 				o = open( "run.batch","w")		
@@ -896,6 +916,10 @@ set grid polar
 				o.close		
 				# get the batch system submission commands	
 				mybatch = self.__getBatchSystem(dataset)
+				if mybatch == None:
+					self.log.error("Batch system error","Could not find any valid Batch system.")
+					sys.exit(1)
+					
 				submit_cmd = mybatch['submit']['command']
 				submit_params = mybatch['submit']['parameters']	
 				
@@ -949,12 +973,13 @@ set grid polar
 			for nbatch in self.batchs:
 				Log.Level = 1
 				self.log.log(nbatch['name'] +":") 
-				if  nbatch['name'] != "NONE" :
-					Log.Level = 2
+				Log.Level = 2
+				if  nbatch['name'] != "MANUAL" :
 					self.log.log("Submission script",nbatch['script'])
-			Log.Level = 2
-			self.log.log("Submission command",nbatch['submit']['command'] + ' '+ nbatch['submit']['parameters'])			
-			self.log.log("Items to Benchmark")
+				else:
+					self.log.log("Submission command",nbatch['submit']['command'] + ' '+ nbatch['submit']['parameters'])			
+		
+			self.log.log("Items to Benchmark")			
 			self.__printAppsInfo()	
 			self.__printFSInfo()
 			self.__printNetInfo()
@@ -1027,12 +1052,15 @@ set grid polar
 		self.__printBaseInfo( self.a_nets, self.nets, which,"Networks")		
 		
 	def __printBatchSystemInfo(self,mybatch):
+		if 	 mybatch == None:
+			self.log.log("Using command line execution\n")
+			return 
+						
 		submit_cmd = mybatch['submit']['command']
-		submit_params = mybatch['submit']['parameters']	
-		if  mybatch == None or mybatch['name'] == "NONE":
+		submit_params = mybatch['submit']['parameters']
+		if  mybatch['name'] == "MANUAL":
 			# No batch system found .... 
-			self.log.warning("Warning","No batch system specified for " + self.log.bold(which) )
-			self.log.log("Submission command:")
+			self.log.log("Using manual launcher:")
 			Log.Level = 1
 			#self.log.data(submit_cmd +" " + submit_params )
 			self.log.log(submit_cmd +" " + submit_params )
@@ -1151,10 +1179,10 @@ set grid polar
 						if batch['name'] == a['batch']:
 							for key in batch.keys():
 								if key!="name" and key!="script" and key!="monitor" and key!="submit"   and a.keys().count(key)==0 :
-									a[key] = batch[key]				
+									a[key] = copy.deepcopy( batch[key] )	 			
 							break # step out the batch loop
 					break # step out self.apps loop
-					
+													
 		# populate self.a_apps -> datasets with the app parameters if they are not already set in the dataset:			
 		for appname in self.a_apps.keys():	
 			for dataset in self.a_apps[appname]:
@@ -1163,29 +1191,31 @@ set grid polar
 						for sk in a.keys():
 							if sk=="batch": # Force the dataset to use always the batch system defined  for the app
 											# the 'batch' parameter is global to the app, not dataset specific 
-								dataset[sk] = a[sk]
-							elif  dataset.keys().count(sk)==0 and sk!="name" and sk!="dataset" and sk!="active" :							
+								dataset[sk] = a[sk] # no deepcopy needed as we want a reference to the batch system
+							elif  dataset.keys().count(sk)==0 and sk!="name" and sk!="dataset" and sk!="active" :
 								if a[sk] != None:
-									if sk == 'outputs':
-										for o in a[sk].keys():
-											if  dataset.keys().count(sk)==0:
-												dataset[sk]={}											
-											dataset[sk][o] = a[sk][o] 											
-									elif sk == 'metrics':
-										for m in  a[sk]:
-											if dataset.keys().count(sk)==0:
-												dataset[sk]=[]
-											dataset[sk].append(m)
-									else:
-										dataset[sk] = a[sk] 
+									dataset[sk] = copy.deepcopy(a[sk])
+# 									if sk == 'outputs':
+# 										for o in a[sk].keys():
+# 											if  dataset.keys().count(sk)==0:
+# 												dataset[sk]={}											
+# 											dataset[sk][o] = a[sk][o] 											
+# 									elif sk == 'metrics':
+# 										for m in  a[sk]:
+# 											if dataset.keys().count(sk)==0:
+# 												dataset[sk]=[]
+# 											dataset[sk].append(m)
+# 									else:
+# 										dataset[sk] = a[sk] 
 								else:
 									dataset[sk] = "" 		
 
-						if dataset.keys().count('tasks_per_node')==0:
-							self.log.error("Config file error"," Dataset of " + self.log.bold(appname) + " found without 'tasks_per_node' defined. This tag is mandatory!!!") 
-							self.log.error("Please revise your configuration file !!!")
-							sys.exit(1)	
-						elif dataset.keys().count('numprocs')==0 :
+# 						if dataset.keys().count('tasks_per_node')==0:
+# 							self.log.error("Config file error"," Dataset of " + self.log.bold(appname) + " found without 'tasks_per_node' defined. This tag is mandatory!!!") 
+# 							self.log.error("Please revise your configuration file !!!")
+# 							sys.exit(1)	
+#						elif dataset.keys().count('numprocs')==0 :
+						if dataset.keys().count('numprocs')==0 :
 							self.log.error("Config file error"," Dataset of " + self.log.bold(appname) + " found without 'numprocs'. This tag is mandatory!!!") 
 							self.log.error("Please revise your configuration file !!!")
 							sys.exit(1)	
@@ -1235,15 +1265,15 @@ set grid polar
 		self.__substituteVarsForAnalysis(self.a_filesys)
 
 
-	def __substituteVarsInBatch_NONE(self):
-		""" The 'NONE' batch system should be very flexible. For that reason inside the 'submit' tag,
-			any field can use references to any tag defined in the NONE batch definition.
+	def __substituteVarsInBatch_MANUAL(self):
+		""" The 'MANUAL' batch system should be very flexible. For that reason inside the 'submit' tag,
+			any field can use references to any tag defined in the MANUAL batch definition.
 			This function does the replacement. References to dataset specific tags such as 
 			%NUMPROCS% are also allowed but those are replaced later on when the submission script is created.
 		"""
-		# Replace inline variables in batch: NONE section	
+		# Replace inline variables in batch: MANUAL section	
 		for batch in self.batchs: 	
-			if batch['name'] == "NONE":
+			if batch['name'] == "MANUAL":
 				str2find = {}
 				for nkey in batch.keys():
 					str2find[nkey]= "%"+ nkey.upper() +"%"
@@ -1383,12 +1413,13 @@ set grid polar
 # 										dataset[sk] = a[sk] 	
 								else:
 									dataset[sk] = "" 		
-													
-						if dataset.keys().count('tasks_per_node')==0:
-							self.log.error("Config file error"," Dataset of " + self.log.bold(aname) + " found without 'tasks_per_node' defined. This tag is mandatory!!!") 
-							self.log.error("Please revise your configuration file !!!")
-							sys.exit(1)	
-						elif dataset.keys().count('numprocs')==0 :
+											
+# 						if dataset.keys().count('tasks_per_node')==0:
+# 							self.log.error("Config file error"," Dataset of " + self.log.bold(aname) + " found without 'tasks_per_node' defined. This tag is mandatory!!!") 
+# 							self.log.error("Please revise your configuration file !!!")
+# 							sys.exit(1)	
+#						elif dataset.keys().count('numprocs')==0 :
+						if dataset.keys().count('numprocs')==0 :
 							self.log.error("Config file error"," Dataset of " + self.log.bold(aname) + " found without 'numprocs'. This tag is mandatory!!!") 
 							self.log.error("Please revise your configuration file !!!")
 							sys.exit(1)	
@@ -1461,18 +1492,18 @@ set grid polar
 			if nbatch['submit'] == None : 
 				self.log.error("Config file error","'submit' tag in one of your BATCHs is empty")
 				sys.exit(1)	
-			if  nbatch['name'] != "NONE" and nbatch['name']!=None:
+			if  nbatch['name'] != "MANUAL" and nbatch['name']!=None:
 				if  nbatch.keys().count('script')==0:
-					self.log.error("Config file error"," 'script' tag is mandatory in an a BATCH unless you name it as 'NONE'")
+					self.log.error("Config file error"," 'script' tag is mandatory in an a BATCH unless you name it as 'MANUAL'")
 					sys.exit(1)
 				if nbatch['script']!=None:
 					if re.match("[^/]",nbatch['script']):
 						nbatch['script'] = self.home + "/etc/" + nbatch['script']
 				else:
-					self.log.error("Config file error","Missing 'script' in one of your non 'NONE' BATCHs")
+					self.log.error("Config file error","Missing 'script' in one of your non 'MANUAL' BATCHs")
 					sys.exit(1)			
 			else:
-				if nbatch['name']==None:
+				if nbatch['name']==None or nbatch['name']=='':
 					self.log.error("Config file error","Missing 'name' in one of your BATCHs")
 					sys.exit(1)	
 		
@@ -1524,7 +1555,7 @@ set grid polar
 		if KABS.LIB_DIR not in sys.path:
 			sys.path.insert(0, KABS.LIB_DIR)		
 		self.__loadYaml(configfile)
-		self.__substituteVarsInBatch_NONE()
+		self.__substituteVarsInBatch_MANUAL()
 
 		
 #####################################################################                                           
@@ -1536,9 +1567,9 @@ if __name__ == "__main__":
 
 	# ARGS processing
 	usage = "%prog <Option> [ [<Selector>] [<arg>] ]"
-	parser = optparse.OptionParser(usage=usage,version='%prog version 0.9')
+	parser = optparse.OptionParser(usage=usage,version='%prog version 0.91')
 	parser.add_option("--clean", action="store_true", help="Remove all stored results from previous runs and analysis", default=False,dest='clean')
-	parser.add_option("-d", "--debug", action="store_true", help="Debug mode: Show the actions to be performed", default=False,dest='d')
+#	parser.add_option("-d", "--debug", action="store_true", help="Debug mode: Show the actions to be performed", default=False,dest='d')
 	parser.add_option("-r", "--run", action="store_true",   help="Run the whole benchmark or a specific item according to the 'Selectors' below", default=False,dest='r')
 	parser.add_option("-c", "--configuration" ,action="store_true", help="Show the benchmark global configuration or a specific item configuration according to the 'Selectors' below ", default=False,dest='c')	
 	parser.add_option("-p", "--postprocess",action="store_true", help="Perform the Postprocess/Analysis stage for the whole benchmark or for a specific item according to the 'Selectors' below .", default=False,dest='p')	
@@ -1548,9 +1579,8 @@ if __name__ == "__main__":
 	groupRun = optparse.OptionGroup(parser, "Selectors")
 	groupRun.add_option("-a", action="store", help="Select a specific application" , dest='a')
 	groupRun.add_option("-n", action="store", help="Select a specific network benchmark",dest='n')
-	groupRun.add_option("-s", action="store", help="Select a specific synthetic benchmark.", dest='s')
+	groupRun.add_option("-s", action="store", help="Select a specific synthetic benchmark", dest='s')
 	groupRun.add_option("-f", action="store", help="Select a specific filesystem benchmark",dest='f')
-#	groupRun.add_option("-x", action="store_true", help="Select the Acceptance benchmark", default=False,dest='x')
 	parser.add_option_group(groupRun)
 		
 	(opts, args) = parser.parse_args()
@@ -1580,7 +1610,8 @@ if __name__ == "__main__":
 		exit(-1)
 
 	# at least one option selected
-	if not ( opts.d or opts.r or opts.p or opts.c or opts.k):
+#	if not ( opts.d or opts.r or opts.p or opts.c or opts.k):
+	if not ( opts.r or opts.p or opts.c or opts.k):
 		print  "**************\nWrong argument\n**************" 
 		parser.print_help()
 		exit(-1)
@@ -1590,7 +1621,8 @@ if __name__ == "__main__":
 	sel_counter = 0
 	for attr, value in opts.__dict__.iteritems():
 		if value == True:
-			if attr=='d' or attr=='r' or attr=='p' or attr=='c' :
+#			if attr=='d' or attr=='r' or attr=='p' or attr=='c' :
+			if  attr=='r' or attr=='p' or attr=='c' :
 				opt_counter = opt_counter + 1
 #			elif attr=='s' :
 #				sel_counter = sel_counter +1
@@ -1616,7 +1648,8 @@ if __name__ == "__main__":
 	selector=''
 	itemname=''
 	for attr, value in opts.__dict__.iteritems():		
-		if ( ( attr=='d' or attr=='r' or attr=='p' or attr=='c' ) and value==True ) or (attr=='k' and value!=None) :
+#		if ( ( attr=='d' or attr=='r' or attr=='p' or attr=='c' ) and value==True ) or (attr=='k' and value!=None) :
+		if ( ( attr=='r' or attr=='p' or attr=='c' ) and value==True ) or (attr=='k' and value!=None) :
 			# got the option
 			option = attr	
 			if (attr=='k' and value!=None):	

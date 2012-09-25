@@ -3,13 +3,12 @@
 KaBS:
    HOME: /home/naranjja/Devel/KaBS
 
-   OUTPUTS: results  # if the leading "/" is provided then the absolute path is taken, otherwise the relative path to HOME ([KaBS][HOME])  will be used       
+   OUTPUTS: results 
 
    BATCH:
         # for the batch systems with a script defined, the submission command will be: <command> <parameters> <script>
-        # if parameter is '<', it might be changed by 'cat <script> | <command>'
         - name: LSF
-          script: run.lsf.in # if the leading "/" is provided then the absolute path is taken, otherwise the relative path to [KaBS][HOME]/etc  will be used          
+          script: run.lsf.in 
           submit: 
                 command: bsub 
                 parameters:  < 
@@ -23,26 +22,14 @@ KaBS:
           mpiflags: -a openmpi
           wallclock: 20       
                 
-        # for a  manual launcher the submission command will be: <command> <parameters> <exe> <args>
-        # variables %XXX% specific to the dataset will be replaced at the moment the script is generated
-        # Other %XXX% variables can be used in the 'submit' section if they are defined..ie: %hostslistfile% 
-        - name: NONE
+        - name: MANUAL
           hostslistfile: hostnames      
           submit: 
                 command: mpirun 
                 parameters: -np %NUMPROCS% -machinefile %HOSTSLISTFILE%  
 
-   BENCH: 
+   TESTS: 
       APPS:
-         - name: cp2k
-           active: false
-
-         - name: gromacs
-           active: false
-
-         - name  : material_studio
-           active: false     
- 
          - name: namd
            active: true
            batch: LSF     
@@ -55,69 +42,19 @@ KaBS:
               - name: namd_nucleosome146Katoms
                 active: true
                 args: nucleosome146Katoms.namd  > nucleosome.out  2>nucleosome.err
-                analysis:  
-                   outputs: 
-                      output: nucleosome.out                      
-                   metrics: 
-                      - name: wallclock
-                        units: secs
-                        command: cat %OUTPUT% | grep WallClock | gawk '{print $2}' 
-                   
-                      - name: days/ns
-                        units: days/ns
-                        command: cat %OUTPUT% | grep  Benchmark | gawk 'END{print $8}' 
-
-                      - name: cputime
-                        units: secs
-                        command: cat %OUTPUT% | grep CPUTime | gawk '{print $4}'   
-                     
-                      - name: memory
-                        units: MB
-                        command: cat %OUTPUT%  | grep Memory | gawk '{print $6}'
+                outputs: 
+                   output: nucleosome.out                      
+ 				verify: 
+ 				references:
  
               - name: namd_apoa1  
                 active: false
                 args:  apoa1.namd   > apoa1.out 2>apoa1.err                        
-                analysis:  
-                   outputs: 
-                      output: apoa1.out  
-                      another_output: KaBS_%NAME%_%NUMPROCS%.out          
-                   metrics: 
-                      - name: wallclock
-                        units: secs
-                        command: cat %OUTPUT% | grep WallClock | gawk '{print $2}' 
-                   
-                      - name: days/ns
-                        units: days/ns
-                        command: cat %OUTPUT% | grep  Benchmark | gawk 'END{print $8}' 
-
-                      - name: cputime
-                        units: secs
-                        command: cat %OUTPUT% | grep CPUTime | gawk '{print $4}'   
-                     
-                      - name: memory
-                        units: MB
-                        command: cat %OUTPUT%  | grep Memory | gawk '{print $6}'
-
-         - name: vasp
-           active: false
-           batch: LSF
-           exe: vasp         
-           modules: module load gcc mpi-openmpi vasp
-           dataset:
-              - name: vasp_Hg
-                active: true
-                args: 
-                analysis:  
-                   outputs: 
-                      outcar: OUTCAR
-                      oszicar: OSZICAR
-                      outcar_ref:  OUTCAR.ref
-                      oszicar_ref: OSZICAR.ref
-                   metrics: 
-                      - name: wallclock
-                        units: secs
-                        command: $cat %OUTCAR% | grep "Elapsed time" | gawk '{print $4}' 
+                outputs: 
+                   output: apoa1.out  
+                   another_output: KaBS_%NAME%_%NUMPROCS%.out          
+				verify:
+				references:
                   
          - name: siesta
            active: true
@@ -128,27 +65,16 @@ KaBS:
               - name: siesta_test
                 active: true
                 args: < fen.fdf  > output.txt
-                analysis:  
-                   outputs:
-                      clock: CLOCK
-                      output: output.txt
-                      fenxml: fen.xml
-                      feneig: fen.EIG
-                   metrics: 
-                      - name: wallclock
-                        units: secs
-                        command: cat %CLOCK% | grep "End of run" | gawk '{print $4}'
-                      - name: AvgMem # Avg mem per node
-                        units: MB
-                        command: cat %OUTPUT% | grep "Node" | gawk '{print $10}' |  gawk 'BEGIN{sum=0 ; c=0}{ sum=sum+$1 ; c=c+1  }END{ print sum/c}'  
-                      - name: FinalEnergy
-                        units: eV
-                        command:  cat %OUTPUT%  | grep "Total =" | gawk '{print $4}' 
+                outputs:
+                   clock: CLOCK
+                   output: output.txt
+                   fenxml: fen.xml
+                   feneig: fen.EIG
 
-      FILESYSTEMS: 
-         - name: gpfs_iozone3
-           active: true
-           batch: LSF
+      SYSTEM: 
+         - name: modules
+           active: false
+           batch: None
            dataset:
                 - name: iozone3_408
                   args: -Rab output.wks –g 2G  -I
@@ -167,18 +93,16 @@ KaBS:
                   exe: ./fs_test.x
                   # 10 objects of 1GB to write by each proc 
                   args:  -type 2 -strided 0 -nobj 10 -size 1073741824  -target /scratch/naranjja/mpiio_testfile -deletefile -touch 2 -check 2
-                  analysis:
-                        outputs:
-                                output: KaBS_%NAME%_%NUMPROCS%.out 
+                  outputs:
+                     output: KaBS_%NAME%_%NUMPROCS%.out 
                 
                 - name: mpi_io_type1_NtoN_noStrided  # MPI-IO on Scratch N procs to 1 file
                   active: true
                   exe: ./fs_test.x
                   # 10 objects of 1GB to write by each proc 
                   args:  -type 2 -strided 0 -nobj 10 -size 1073741824  -target /scratch/naranjja/mpiio_testfile -deletefile -touch 2 -check 2
-                  analysis:
-                        outputs:
-                                output: KaBS_%NAME%_%NUMPROCS%.out 
+                  outputs:
+                     output: KaBS_%NAME%_%NUMPROCS%.out 
 
 
       NETWORKS: 
@@ -193,9 +117,8 @@ KaBS:
                   exe: ./skampi
                   dependencies:  ski/*.inc , ski/skampi_coll.ski 
                   args:  -i ski/skampi_coll.ski  -o skaoutf.txt
-                  analysis:
-                        outputs:
-                                output: skaoutf.txt                                              
+                  outputs:
+                     output: skaoutf.txt                                              
  
                 - name: imb_3.2.3                            
                   active: true  
