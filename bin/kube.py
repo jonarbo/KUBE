@@ -138,23 +138,17 @@ class KUBE:
 	LIB_DIR = cmd_folder + "/../lib"
 	CONF_FILE_PATH = cmd_folder + "/../etc/"
 	CONF_FILE_NAME = "kube.yaml"
-	# Some colors to print 
-#	L0="\033[1m"  # Bold
-	L0="\033[0;40m"  # Bold
-	L1="\033[94m" # Blue 
-	L2="\033[92m" # Green
-	LE="\033[0;0m" # End string
 	
 #####################################################################                                           
 #
 #	Getters functions
 #
 #####################################################################  					
-	def __getBatchSystem(self,whichapp):	 # parameter can be a dataset or an app since it holds the same values.
+	def __getBatchSystem(self,which):	 # parameter can be a dataset or an app since it holds the same values.
 		""" Returns the batch object for a specific dataset or app
 		"""
 		for batch in self.batchs:
-			if batch['name'] == whichapp['batch']:
+			if batch['name'] == which['batch']:
 	 			return batch 		
 		return None	 			
 		
@@ -1195,26 +1189,8 @@ set grid polar
 							elif  dataset.keys().count(sk)==0 and sk!="name" and sk!="dataset" and sk!="active" :
 								if a[sk] != None:
 									dataset[sk] = copy.deepcopy(a[sk])
-# 									if sk == 'outputs':
-# 										for o in a[sk].keys():
-# 											if  dataset.keys().count(sk)==0:
-# 												dataset[sk]={}											
-# 											dataset[sk][o] = a[sk][o] 											
-# 									elif sk == 'metrics':
-# 										for m in  a[sk]:
-# 											if dataset.keys().count(sk)==0:
-# 												dataset[sk]=[]
-# 											dataset[sk].append(m)
-# 									else:
-# 										dataset[sk] = a[sk] 
 								else:
 									dataset[sk] = "" 		
-
-# 						if dataset.keys().count('tasks_per_node')==0:
-# 							self.log.error("Config file error"," Dataset of " + self.log.bold(appname) + " found without 'tasks_per_node' defined. This tag is mandatory!!!") 
-# 							self.log.error("Please revise your configuration file !!!")
-# 							sys.exit(1)	
-#						elif dataset.keys().count('numprocs')==0 :
 						if dataset.keys().count('numprocs')==0 :
 							self.log.error("Config file error"," Dataset of " + self.log.bold(appname) + " found without 'numprocs'. This tag is mandatory!!!") 
 							self.log.error("Please revise your configuration file !!!")
@@ -1402,23 +1378,9 @@ set grid polar
 							elif  dataset.keys().count(sk)==0 and sk!="name" and sk!="dataset" and sk!="active" :
 								if a[sk] != None:
 									dataset[sk] = copy.deepcopy(a[sk])
-# 									if sk == 'outputs':
-# 										for o in a[sk].keys():
-# 											if  dataset.keys().count(sk)==0:
-# 												dataset[sk]={}											
-# 											dataset[sk][o] =  copy.deepcopy( a[sk][o] ) 											
-# 									elif sk == 'metrics':
-# 										dataset[sk] = copy.deepcopy(a[sk])
-# 									else:											
-# 										dataset[sk] = a[sk] 	
 								else:
 									dataset[sk] = "" 		
-											
-# 						if dataset.keys().count('tasks_per_node')==0:
-# 							self.log.error("Config file error"," Dataset of " + self.log.bold(aname) + " found without 'tasks_per_node' defined. This tag is mandatory!!!") 
-# 							self.log.error("Please revise your configuration file !!!")
-# 							sys.exit(1)	
-#						elif dataset.keys().count('numprocs')==0 :
+
 						if dataset.keys().count('numprocs')==0 :
 							self.log.error("Config file error"," Dataset of " + self.log.bold(aname) + " found without 'numprocs'. This tag is mandatory!!!") 
 							self.log.error("Please revise your configuration file !!!")
@@ -1567,9 +1529,8 @@ if __name__ == "__main__":
 
 	# ARGS processing
 	usage = "%prog <Option> [ [<Selector>] [<arg>] ]"
-	parser = optparse.OptionParser(usage=usage,version='%prog version 0.91')
+	parser = optparse.OptionParser(usage=usage,version='%prog version 0.92')
 	parser.add_option("--clean", action="store_true", help="Remove all stored results from previous runs and analysis", default=False,dest='clean')
-#	parser.add_option("-d", "--debug", action="store_true", help="Debug mode: Show the actions to be performed", default=False,dest='d')
 	parser.add_option("-r", "--run", action="store_true",   help="Run the whole benchmark or a specific item according to the 'Selectors' below", default=False,dest='r')
 	parser.add_option("-c", "--configuration" ,action="store_true", help="Show the benchmark global configuration or a specific item configuration according to the 'Selectors' below ", default=False,dest='c')	
 	parser.add_option("-p", "--postprocess",action="store_true", help="Perform the Postprocess/Analysis stage for the whole benchmark or for a specific item according to the 'Selectors' below .", default=False,dest='p')	
@@ -1577,7 +1538,7 @@ if __name__ == "__main__":
 	parser.add_option("-k", "", nargs=2 ,action="store" , help="Displays the kiviat diagram for the specified analysis dir. The first argument is the path to the reference directory and the second argument is a path to another directory which might contain multiple dirs. If any of these dirs contain a valid analysis data, they will be used to compared against the reference dir specified in the first argument" , dest='k')	
 		
 	groupRun = optparse.OptionGroup(parser, "Selectors")
-	groupRun.add_option("-a", action="store", help="Select a specific application" , dest='a')
+	groupRun.add_option("-a", action="store", help="Select a specific application benchmark" , dest='a')
 	groupRun.add_option("-n", action="store", help="Select a specific network benchmark",dest='n')
 	groupRun.add_option("-s", action="store", help="Select a specific synthetic benchmark", dest='s')
 	groupRun.add_option("-f", action="store", help="Select a specific filesystem benchmark",dest='f')
@@ -1610,7 +1571,6 @@ if __name__ == "__main__":
 		exit(-1)
 
 	# at least one option selected
-#	if not ( opts.d or opts.r or opts.p or opts.c or opts.k):
 	if not ( opts.r or opts.p or opts.c or opts.k):
 		print  "**************\nWrong argument\n**************" 
 		parser.print_help()
@@ -1621,11 +1581,8 @@ if __name__ == "__main__":
 	sel_counter = 0
 	for attr, value in opts.__dict__.iteritems():
 		if value == True:
-#			if attr=='d' or attr=='r' or attr=='p' or attr=='c' :
 			if  attr=='r' or attr=='p' or attr=='c' :
 				opt_counter = opt_counter + 1
-#			elif attr=='s' :
-#				sel_counter = sel_counter +1
 		elif ( attr=='a'  or  attr=='n' or  attr=='f' or  attr=='s') and value != None:
 			sel_counter = sel_counter +1		
 		elif attr=='k' and value != None :
@@ -1648,13 +1605,11 @@ if __name__ == "__main__":
 	selector=''
 	itemname=''
 	for attr, value in opts.__dict__.iteritems():		
-#		if ( ( attr=='d' or attr=='r' or attr=='p' or attr=='c' ) and value==True ) or (attr=='k' and value!=None) :
 		if ( ( attr=='r' or attr=='p' or attr=='c' ) and value==True ) or (attr=='k' and value!=None) :
 			# got the option
 			option = attr	
 			if (attr=='k' and value!=None):	
 				itemname = value
-#		if  ( ( attr=='a'  or  attr=='n' or  attr=='f' or  attr=='s' ) and value!= None) or ( attr=='x' and value==True):
 		if  ( ( attr=='a'  or  attr=='n' or  attr=='f' or  attr=='s' ) and value!= None) :
 			# got selector
 			selector = attr
@@ -1695,8 +1650,3 @@ if __name__ == "__main__":
  		assert False, "unhandled option"
  			
 	sys.exit(0)
-	
-	
-
-			
-			

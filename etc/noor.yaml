@@ -1,12 +1,11 @@
 %YAML 1.2
 ---
 KUBE:
-   HOME: /home/naranjja/Devel/KUBE
+   HOME: /home/naranjja/Devel/KUBE.2
 
    OUTPUTS: results  # if the leading "/" is provided then the absolute path is taken, otherwise the relative path to HOME ([KUBE][HOME])  will be used       
 
-   BATCH:
-        # for the batch systems with a script defined, the submission command will be: <command> <parameters> <script>
+   BATCH:             
         - name: LSF
           script: run.lsf.in # if the leading "/" is provided then the absolute path is taken, otherwise the relative path to [KUBE][HOME]/etc  will be used          
           submit: 
@@ -123,19 +122,21 @@ KUBE:
            modules:  module load gcc mpi-openmpi
            datasets:
                 - name: iozone3_408
-                  args: -Rab output.wks -g 1G  -I | tee iozone.out
+                  args: -Rab output.wks -g 500M  -I | tee iozone.out
                   exe: bin/iozone
                   dependencies: bin/* 
                   active: true
                   outputs:
                     iozone: iozone.out
+                    output: output.wks
 
          - name: gpfs_mpi_io
            active: true
            batch: LSF
            modules:  module load gcc mpi-openmpi
-           numprocs: 32
+           numprocs: 16
            exe: ./fs_test.x
+           tmpfilepath: /scratch/naranjja/mpiio_testfile_%NAME%
            metrics:
              - name: Efective_BW_Write_avg
                units: MB/s
@@ -161,12 +162,12 @@ KUBE:
                 - name: mpi_io_type2_Nto1_noStrided  # MPI-IO on Scratch N procs to 1 file
                   active: true                
                   # 10 objects of 1GB to write by each proc 
-                  args:  -type 2 -strided 0 -nobj 10 -size 1073741824  -target /scratch/naranjja/mpiio_testfile -deletefile -touch 2 -check 2
+                  args:  -type 2 -strided 0 -nobj 10 -size 1073741824  -target %TMPFILEPATH% -touch 2 -check 2
                 
                 - name: mpi_io_type1_NtoN_noStrided  # MPI-IO on Scratch N procs to 1 file
                   active: true
                   # 10 objects of 1GB to write by each proc 
-                  args:  -type 1 -strided 0 -nobj 10 -size 1073741824  -target /scratch/naranjja/mpiio_testfile -deletefile -touch 2 -check 2
+                  args:  -type 1 -strided 0 -nobj 10 -size 1073741824  -target  %TMPFILEPATH%  -touch 2 -check 2
 
       NETWORKS: 
          - name: infiniband_mpi
@@ -178,11 +179,14 @@ KUBE:
                 - name: skampi-5.0.4-r0355
                   active: false
                   exe: ./skampi
+                  numprocs: 32
                   dependencies:  ski/*.inc , ski/skampi_coll.ski 
                   args:  -i ski/skampi_coll.ski  -o skaoutf.txt
                   outputs:
-                    output: skaoutf.txt                                              
- 
+                    output: skaoutf.txt    
+                    batchout:  KUBE_%NAME%_%NUMPROCS%.out 
+                    batcherr:  KUBE_%NAME%_%NUMPROCS%.err 
+                                                              
                 - name: imb_3.2.3                            
                   active: true  
                   exe: bin/IMB-MPI1 # Full path or  Relative to the current dir
@@ -217,7 +221,7 @@ KUBE:
          - name: NAS
            active: true
            batch: LSF 
-           numprocs: 8, 16
+           numprocs: 4 , 8
            modules:  module load gcc mpi-openmpi
            dependencies: bin/*.%NUMPROCS%
            datasets:
