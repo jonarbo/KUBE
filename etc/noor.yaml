@@ -1,7 +1,7 @@
 %YAML 1.2
 ---
 KUBE:
-   HOME: /home/naranjja/Devel/KUBE.2
+   HOME: /home/naranjja/Devel/KUBE
 
    OUTPUTS: results  # if the leading "/" is provided then the absolute path is taken, otherwise the relative path to HOME ([KUBE][HOME])  will be used       
 
