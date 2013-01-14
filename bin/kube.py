@@ -326,6 +326,110 @@ set grid polar
 		# and call it
 		print syscall ( "gnuplot -persist " + gnuplotfile )[1]
 
+#####################################################################                                           
+#
+#	Display time evolution of the metrics
+#
+#####################################################################  
+	def timeAnalysis(self,target):		
+		""" Shows the time evolution of the metrics found in the 'target' dir.
+			'target' must contain a list of directories, preferably those created in the postprocess stage						
+			or at least they must contain the necessary files: analysis.raw and timestamp
+			'target' may also be a partial name.
+			For instance:		
+			results/analysis/apps/namd/namd_apoa1/namd_apoa1_4cpus_1nodes_ 
+			then all the directories starting with 'namd_apoa1_4cpus_1nodes_' will be processed				
+		"""
+		
+		if not target:
+			self.log.error("Wrong arguments. Target dir arguments needed.")
+			sys.exit(1)
+			
+ 		metrics = []
+ 		time = []
+ 		
+ 		# set the legend from the run name:
+		title = os.path.basename(target)
+		if len(title)==0:
+			title = os.path.basename( str(os.path.dirname(target))[1:len(str(os.path.dirname(target)))] )
+		
+		print "Reading data from "+ self.log.bold(target) + " analysis:"
+
+		if not os.path.isdir(target):
+			for root, dirnames, filenames in os.walk(os.path.dirname(target)):
+				u = [ dir for dir in dirnames if re.match(os.path.basename(target), dir) ]
+				target = os.path.dirname(target)
+				break
+		else:
+			u = os.listdir(target)
+		
+		for file in u:
+			if os.path.isfile(target + "/" + file + "/analysis.raw") and os.path.isfile(target + "/" + file + "/timestamp"):
+				Log.Level = 1
+				self.log.plain( self.log.bold(target + "/"+ file ) )
+				
+				if not os.path.exists(target + "/" + file+"/analysis.raw") or  not os.path.exists(target + "/" + file+"/timestamp")  :
+					self.log.error("Data File not found!","The file " + self.log.bold( target + "/" + file+"/analysis.raw") + " and/or " +  self.log.bold( target + "/" + file+"/timestamp") + " could not be found...skipping" )
+					continue
+								
+				tf = open(target + "/" + file+"/analysis.raw", 'r') 
+				ts = open(target + "/" + file+"/timestamp", 'r') 
+
+				ofc = tf.readline()
+				ots = ts.readline()
+				ts.close()
+
+				time.append(ots)
+				metrics.append({})				
+				while ofc:
+					line = ofc.split()
+					metrics[len(metrics)-1][line[0]] = line[2] 
+					ofc = tf.readline()	
+				tf.close
+
+		ofname={}
+		for it in range(0,len(time)):
+			for name in metrics[it]:
+				if ofname.keys().count(name) == 0:
+					ofname[name] = open( name + ".raw", 'w') 	
+				ofname[name].write( time[it] + ' ' + metrics[it][name] + '\n' )
+				ofname[name].flush()
+					
+		# create gnuplot file
+		gnuplotfile = "metricsvstime.gnuplot"
+		kf = open(gnuplotfile,'w')
+		kf.write(
+		"""
+set clip points
+unset border
+set xtics axis 
+set ytics axis 
+set grid
+set xdata time
+set timefmt "%Y-%m-%d%H:%M:%S"
+#set format x "%Y:%m:%d"
+""") 
+		kf.write( "set title \""+ target + "\" \n")
+		
+		splotstr = " "
+		x11win = 0
+		for key in ofname.keys():		
+			splotstr = splotstr + "set term X11 " + str(x11win) + "\nplot '" + key+ ".raw' using 1:2 with linespoints title \"" + key + "\"\n" 
+			x11win=x11win+1
+
+		kf.write( splotstr )
+		kf.flush()
+		kf.close()
+			
+		# close files	
+		for it in range(0,len(time)):
+			for name in metrics[it]:
+				if ofname.keys().count(name) != 0:
+					ofname[name].close()
+					del ofname[name]
+			
+		# and call it
+		print syscall ( "gnuplot -persist " + gnuplotfile )[1]
 
 #####################################################################                                           
 #
@@ -540,6 +644,16 @@ set grid polar
 			reple = re.compile( str2find )
 			mobj = reple.search(i)
 			cpus = mobj.group(1)
+
+			# get the timestamp from the run name:
+			str2find = "_([^_]+)$"	
+			reple = re.compile( str2find )
+			mobj = reple.search(i)
+			timestamp = mobj.group(1)
+			ts = open( "timestamp","w")
+			ts.write( timestamp  )
+			ts.flush
+			ts.close		
 
 			# Copy the outputs needed ...
 			for outp in  dataset['outputs'].keys():
@@ -1536,6 +1650,8 @@ if __name__ == "__main__":
 	parser.add_option("-p", "--postprocess",action="store_true", help="Perform the Postprocess/Analysis stage for the whole benchmark or for a specific item according to the 'Selectors' below .", default=False,dest='p')	
 	parser.add_option("-y", "--yaml",action="store", help="Use the specified yaml configuration file rather than the default one", dest='y')	
 	parser.add_option("-k", "", nargs=2 ,action="store" , help="Displays the kiviat diagram for the specified analysis dir. The first argument is the path to the reference directory and the second argument is a path to another directory which might contain multiple dirs. If any of these dirs contain a valid analysis data, they will be used to compared against the reference dir specified in the first argument" , dest='k')	
+	parser.add_option("-t", "", nargs=1 ,action="store" , help="Displays the time evolution of the metrics for the specified analysis dir." , dest='t')	
+
 		
 	groupRun = optparse.OptionGroup(parser, "Selectors")
 	groupRun.add_option("-a", action="store", help="Select a specific application benchmark" , dest='a')
@@ -1571,7 +1687,7 @@ if __name__ == "__main__":
 		exit(-1)
 
 	# at least one option selected
-	if not ( opts.r or opts.p or opts.c or opts.k):
+	if not ( opts.r or opts.p or opts.c or opts.k or opts.t):
 		print  "**************\nWrong argument\n**************" 
 		parser.print_help()
 		exit(-1)
@@ -1585,7 +1701,7 @@ if __name__ == "__main__":
 				opt_counter = opt_counter + 1
 		elif ( attr=='a'  or  attr=='n' or  attr=='f' or  attr=='s') and value != None:
 			sel_counter = sel_counter +1		
-		elif attr=='k' and value != None :
+		elif (attr=='k' or attr=='t')and value != None :
 			opt_counter = opt_counter + 1
 				
 	if opt_counter > 1:
@@ -1605,10 +1721,10 @@ if __name__ == "__main__":
 	selector=''
 	itemname=''
 	for attr, value in opts.__dict__.iteritems():		
-		if ( ( attr=='r' or attr=='p' or attr=='c' ) and value==True ) or (attr=='k' and value!=None) :
+		if ( ( attr=='r' or attr=='p' or attr=='c' ) and value==True ) or ( (attr=='k' or attr=='t') and value!=None) :
 			# got the option
 			option = attr	
-			if (attr=='k' and value!=None):	
+			if ((attr=='k' or attr=='t') and value!=None):	
 				itemname = value
 		if  ( ( attr=='a'  or  attr=='n' or  attr=='f' or  attr=='s' ) and value!= None) :
 			# got selector
@@ -1645,6 +1761,9 @@ if __name__ == "__main__":
  	
  	elif option == "k":
  		kube.kiviat(itemname[0],itemname[1])
+ 		
+ 	elif option == "t":
+ 		kube.timeAnalysis(itemname)	
  		
  	else:
  		assert False, "unhandled option"

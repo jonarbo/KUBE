@@ -43,7 +43,7 @@ KUBE:
               - name: wallclock
                 units: secs
                 command: cat %OUTPUT% | grep WallClock | gawk '{print $2}'                
-              - name: days/ns
+              - name: days_per_ns
                 units: days/ns
                 command: cat %OUTPUT% | grep  Benchmark | gawk 'END{print $8}' 
               - name: cputime
@@ -56,7 +56,7 @@ KUBE:
            # here goes the specific dataset configuration
            datasets: 
               - name: namd_nucleosome146Katoms
-                active: true
+                active: false
                 args: nucleosome146Katoms.namd  > nucleosome.out  2>nucleosome.err
                 outputs: 
                    output: nucleosome.out                      
