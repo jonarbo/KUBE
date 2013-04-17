@@ -6,7 +6,6 @@
 #BSUB -q %QUEUE% 
 #BSUB -W %WALLCLOCK%
 #BSUB -n %NUMPROCS%
-#BSUB %MPIFLAGS%
 #BSUB -R span[ptile=%TASKS_PER_NODE%]
 
 module purge

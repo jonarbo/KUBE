@@ -22,14 +22,18 @@ cmd_folder = os.path.abspath(os.path.split(inspect.getfile( inspect.currentframe
 #  utility functions 
 #
 ######################################################
-def clean(dir):
+def clean(dir,removeDir=False):
 	"""Function that removes 'dir' and sub-directories inside 'dir'"""
+	if not os.path.isdir(dir):
+		return 	
 	for d in os.listdir(dir):
 		if os.path.isdir(dir+"/"+d) == True:
 			clean(dir+"/"+d)
 			os.rmdir( dir +"/"+d)	
 		else:
 			os.remove(dir+"/"+d) 			
+	if removeDir == True:
+		os.rmdir( dir ) 	
 
 def syscall(str, wait = True ):	
 	"""Wrapper function to make a system call where pipes are allowed"""
@@ -474,41 +478,61 @@ set timefmt "%Y-%m-%d%H:%M:%S"
 			self.log.plain("***********************************************")
 			self.log.plain("***  KUBE analysis stage for selected Apps: ***")
 			self.log.plain("***********************************************")
-			if self.a_apps.keys().count(name) == 0:
+			if name.lower()!="all" and self.a_apps.keys().count(name) == 0:
 				self.log.warning( "Warning", "Application " +  self.log.bold( name ) + " not found or not active"	)
 				return
-			self.__analysisApp(name)	
-				
+			if name.lower()!="all":
+				self.__analysisApp(name)	
+			else:
+				for app in self.a_apps:	
+					self.__analysisApp(app)	
+
 		elif item == 'n':		
 			self.log.plain("***********************************************")
 			self.log.plain("***    KUBE analysis stage for Networks:    ***")
 			self.log.plain("***********************************************")
-			if self.a_nets.keys().count(name) == 0:
+			if name.lower()!="all" and self.a_nets.keys().count(name) == 0:
 				self.log.warning( "Warning", "Network " +  self.log.bold( name ) + " not found or not active"	)
 				return
-			self.__analysisNet(name)	
+			if name.lower()!="all":
+				self.__analysisNet(name)	
+			else:
+				for app in self.a_nets:	
+					self.__analysisNet(app)	
 
 		elif item == 'f':
 			self.log.plain("***********************************************")
 			self.log.plain("***    KUBE analysis stage for Filesystems: ***")
 			self.log.plain("***********************************************")
-			if self.a_filesys.keys().count(name) == 0:
+			if name.lower()!="all" and  self.a_filesys.keys().count(name) == 0:
 				self.log.warning( "Warning", "Filesystem " +  self.log.bold( name ) + " not found or not active"	)
 				return
-			self.__analysisFilesystem(name)				
+			if name.lower()!="all":
+				self.__analysisFilesystem(name)				
+			else:
+				for app in self.a_filesys:	
+					self.__analysisFilesystem(app)	
 
 		elif item == 's':
 			self.log.plain("***********************************************")
 			self.log.plain("***    KUBE analysis stage for  Synthetics: ***")
 			self.log.plain("***********************************************")
-			if self.a_synths.keys().count(name) == 0:
+			if name.lower()!="all" and self.a_synths.keys().count(name) == 0:
 				self.log.warning( "Warning", "Benchmark " +  self.log.bold( name ) + " not found or not active"	)
 				return
-			self.__analysisSynthetics(name)				
+			if name.lower()!="all":
+				self.__analysisSynthetics(name)				
+			else:
+				for app in self.a_synths:	
+					self.__analysisSynthetics(app)	
 
 		else:
 			print "Unknown item: '" + str(item) + "'"
-			
+		
+		# after the analysis, remove runs that needs to be removed
+		self.cleanOldRuns()
+
+	
 	def __analysisApp(self,name):
 		"""  Performs the analysis stage for an app. Go into the runs dir and identify the app and the dataset.
 			 then creates a similar entry in the 'results/analysis' dir  and copies the output files to the new location.
@@ -517,8 +541,8 @@ set timefmt "%Y-%m-%d%H:%M:%S"
  		"""
  		self.log.log( name )
 		app = self.a_apps[name]
-		analysisd = self.output_dir + "/analysis/apps/"+ name + "/"
-		runsd = self.output_dir + "/runs/apps/"+ name + "/"
+		analysisd = self.analysis_dir + "/apps/"+ name + "/"
+		runsd = self.runs_dir + "/apps/"+ name + "/"
 		if not os.path.exists(runsd):
 			self.log.warning("Can't find any completed run for this app: " + self.log.bold(name) )
 			return
@@ -532,8 +556,8 @@ set timefmt "%Y-%m-%d%H:%M:%S"
 	def __analysisSynthetics(self,name):
 		self.log.log( name )
 		synth = self.a_synths[name]
-		analysisd = self.output_dir + "/analysis/synthetics/"+ name + "/"
-		runsd = self.output_dir + "/runs/synthetics/"+ name + "/"
+		analysisd = self.analysis_dir + "/synthetics/"+ name + "/"
+		runsd = self.runs_dir + "/synthetics/"+ name + "/"
 		if not os.path.exists(runsd):
 			self.log.warning("Can't find any completed run for this synthetic: " + self.log.bold(name) )
 			return
@@ -547,8 +571,8 @@ set timefmt "%Y-%m-%d%H:%M:%S"
 	def __analysisFilesystem(self,name):
 		self.log.log( name )
 		fs = self.a_filesys[name]
-		analysisd = self.output_dir + "/analysis/filesystems/"+ name + "/"
-		runsd = self.output_dir + "/runs/filesystems/"+ name + "/"
+		analysisd = self.analysis_dir + "/filesystems/"+ name + "/"
+		runsd = self.udir + "/runs/filesystems/"+ name + "/"
 		if not os.path.exists(runsd):
 			self.log.warning("Can't find any completed run for this filesystem: " + self.log.bold(name) )
 			return
@@ -563,8 +587,8 @@ set timefmt "%Y-%m-%d%H:%M:%S"
 	def __analysisNet(self,name):
 		self.log.log( name )
 		net = self.a_nets[name]
-		analysisd = self.output_dir + "/analysis/networks/"+ name + "/"
-		runsd = self.output_dir + "/runs/networks/"+ name + "/"
+		analysisd = self.analysis_dir + "/networks/"+ name + "/"
+		runsd = self.runs_dir + "/networks/"+ name + "/"
 		if not os.path.exists(runsd):
 			self.log.warning("Can't find any completed run for this network: " + self.log.bold(name) )
 			return
@@ -660,6 +684,9 @@ set timefmt "%Y-%m-%d%H:%M:%S"
 				failed = False
 				mobj = re.match("#(\d+)#", outp)
 				if mobj:
+					# the output key contains a reference to the number of cpus used ...
+					# this is it because we may have some different outputs' name 
+					# related to the number of cpus used.	
 					if mobj.group(1) == cpus:
 						if os.path.isfile(rundir + "/" + i + "/" + dataset['outputs'][outp]) :					
 							shutil.copy( rundir + "/" + i + "/" + dataset['outputs'][outp] , "./")
@@ -669,12 +696,13 @@ set timefmt "%Y-%m-%d%H:%M:%S"
 							failed = True
 							break
 				else:
+					# Now be sure to skip the key that originated the cpu dependency ...
 					skip = False
 					for again_outp in  dataset['outputs'].keys():				
 						if re.match("#"+cpus+"#"+outp , again_outp):
 							skip = True
 							break								
-					if not skip:	
+					if not skip:
 						if os.path.isfile(rundir + "/" + i + "/" + dataset['outputs'][outp]) :					
 							shutil.copy( rundir + "/" + i + "/" + dataset['outputs'][outp] , "./")
 						else:
@@ -683,70 +711,78 @@ set timefmt "%Y-%m-%d%H:%M:%S"
 							failed = True
 							break		
 
+				
 				if failed == True:
 					continue
+			
+			# output data copied
+			# now compute the metrics
+			if  dataset.keys().count('metrics') != 0 :
+				# now crate a .csv and the .raw file suitable to be used later on with gnuplot...
+				START = 0.0
+				END = 2*math.pi
+				STEP =  END/len(dataset['metrics'])	
+				theta = frange(START,END,STEP)		
+				radio = []
+				metrics = []
+				o = open( "analysis.csv","w")
+				o.write(  "\"metric\",\"value\",\"units\"\n" )
 				
-				if  dataset.keys().count('metrics') != 0 :
-					# now crate a .csv and the .raw file suitable to be used later on with gnuplot...
-					START = 0.0
-					END = 2*math.pi
-					STEP =  END/len(dataset['metrics'])	
-					theta = frange(START,END,STEP)		
-					radio = []
-					metrics = []
-					o = open( "analysis.csv","w")
-					o.write(  "\"metric\",\"value\",\"units\"\n" )
-
-					for metric in dataset['metrics']:						
-						# Up to this point, values in Metrics may contain %VALUES% to be replaced ... so we have to do it now
-						name= metric['name']
-						command=metric['command']
-						units=metric['units']
-						
-						# replace references to the output section						
-						for outp in  dataset['outputs'].keys():
-							if not re.match( "#\d+#",outp  ):
-								reple = re.compile( "%"+str(outp).upper()+"%" )
-								if dataset['outputs'].keys().count( "#"+cpus+"#"+outp) != 0:
-									name    = reple.sub(  str(dataset['outputs']["#"+cpus+"#"+outp]) , name )	
-									units   = reple.sub(  str(dataset['outputs']["#"+cpus+"#"+outp]) ,units )	
-									command = reple.sub(  str(dataset['outputs']["#"+cpus+"#"+outp]) ,command )	
-								else:
-									name    = reple.sub(  str(dataset['outputs'][outp]) ,name )	
-									units   = reple.sub(  str(dataset['outputs'][outp]) , units)	
-									command = reple.sub(  str(dataset['outputs'][outp]) , command )	
-						
-						# Now replace other variables from the dataset...
-						for tagp in  dataset.keys():
-							if tagp == 'numprocs':
-								reple = re.compile( "%NUMPROCS%" )
-								command = reple.sub( cpus , command)
-							else:	
-								if tagp != 'outputs' and tagp != 'metrics' and not isinstance(dataset[tagp],dict):
-									if not re.match( "#\d+#",tagp  ):
-										reple = re.compile( "%"+str(tagp).upper()+"%" )
-										if dataset.keys().count( "#"+cpus+"#"+tagp) != 0:
-											name    = reple.sub( str(dataset["#"+cpus+"#"+tagp]) ,name )	
-											units   = reple.sub( str(dataset["#"+cpus+"#"+tagp]) , units )	
-											command = reple.sub( str(dataset["#"+cpus+"#"+tagp]) , command )	
-										else:
-											name    = reple.sub( str(dataset[tagp]) , name )	
-											units   = reple.sub( str(dataset[tagp]) , units )	
-											command = reple.sub( str(dataset[tagp]) , command)	
-						
-							
-						#o.write( "\"" +metric['name']+ "\"," + "\"" + syscall( metric['command'])[0].strip() +"\"," +"\"" + metric['units'] + "\"\n"  ) 
-						o.write( "\"" + name + "\"," + "\"" + syscall(command)[0].strip() +"\"," +"\"" + units + "\"\n"  ) 
-						radio.append ( syscall( command )[0].strip() )				
-						metrics.append( name )
-					o.flush()
-					o.close
+				for metric in dataset['metrics']:						
+					# Up to this point, values in Metrics may contain %VALUES% to be replaced ... so we have to do it now
+					name= metric['name']
+					command=metric['command']
+					units=metric['units']
+					# replace references to the output section						
+					for outp in  dataset['outputs'].keys():
+						if not re.match( "#\d+#",outp  ):
+							reple = re.compile( "%"+str(outp).upper()+"%" )
+							if dataset['outputs'].keys().count( "#"+cpus+"#"+outp) != 0:
+								name    = reple.sub(  str(dataset['outputs']["#"+cpus+"#"+outp]) , name )	
+								units   = reple.sub(  str(dataset['outputs']["#"+cpus+"#"+outp]) ,units )	
+								command = reple.sub(  str(dataset['outputs']["#"+cpus+"#"+outp]) ,command )	
+							else:
+								name    = reple.sub(  str(dataset['outputs'][outp]) ,name )	
+								units   = reple.sub(  str(dataset['outputs'][outp]) , units)	
+								command = reple.sub(  str(dataset['outputs'][outp]) , command )	
 					
-					sort_dict = zip(metrics, theta, radio)		
-									
-					r = open( "analysis.raw","w")
-					for k in sort_dict:
-						r.write( str(k[0]) + "  "  + str(k[1]) + "  "  + str(k[2])   + "\n"  )
+					# Now replace other variables from the dataset...
+					for tagp in  dataset.keys():
+						if tagp == 'numprocs':
+							reple = re.compile( "%NUMPROCS%" )
+							command = reple.sub( cpus , command)
+						else:	
+							# '%TOOLS%' does need ot be replaced since it was already done in __substituteVarsForAnalysis
+							if not tagp in ['outputs','metrics','tools'] and not isinstance(dataset[tagp],dict):
+								if not re.match( "#\d+#",tagp  ):
+									reple = re.compile( "%"+str(tagp).upper()+"%" )
+									if dataset.keys().count( "#"+cpus+"#"+tagp) != 0:
+										toSubst = str(dataset["#"+cpus+"#"+tagp])	
+										name    = reple.sub( toSubst , name    )	
+										units   = reple.sub( toSubst , units   )	
+										command = reple.sub( toSubst , command )	
+									else:
+										toSubst = str(dataset[tagp])	
+										# the following is not needed 
+										#if tagp == "tools":
+										#	who  = os.path.basename(runsd[1:len(runsd)-1])
+										#	what = os.path.basename(os.path.dirname(runsd[1:len(runsd)-1]))  
+										#	toSubst = str(dataset[tagp]) + "/" + what + "/" + who + "/"	
+										name    = reple.sub( toSubst , name )	
+										units   = reple.sub( toSubst , units )	
+										command = reple.sub( toSubst , command)	
+
+					o.write( "\"" + name + "\"," + "\"" + syscall(command)[0].strip() +"\"," +"\"" + units + "\"\n"  ) 
+					radio.append ( syscall( command )[0].strip() )				
+					metrics.append( name )
+		
+				o.flush()
+				o.close
+					
+				sort_dict = zip(metrics, theta, radio)		
+				r = open( "analysis.raw","w")
+				for k in sort_dict:
+					r.write( str(k[0]) + "  "  + str(k[1]) + "  "  + str(k[2])   + "\n"  )
 					r.write( str(sort_dict[0][0])	 + "  "  + str(sort_dict[0][1]) + "  "  + str(sort_dict[0][2])    + "\n"  )
 					r.flush
 					r.close		
@@ -793,37 +829,53 @@ set timefmt "%Y-%m-%d%H:%M:%S"
 			self.log.plain("********************************************")			
 			self.log.plain("***  Running KUBE for selected Apps:     ***")
 			self.log.plain("********************************************")
-			if self.a_apps.keys().count(name) == 0:
+			if name.lower()!= "all"  and self.a_apps.keys().count(name) == 0:
 				self.log.warning("Warning","Application " +  self.log.bold(name) + " not found or not active"	)
 				return		
-			self.__runApp(name)	
+			if  name.lower()!= "all":
+				self.__runApp(name)	
+			else:
+				for app in self.a_apps:
+					self.__runApp(app)
 				
 		elif item == 'n':		
 			self.log.plain("********************************************")			
 			self.log.plain("***  Running KUBE for selected Networks: ***")
 			self.log.plain("********************************************")
-			if self.a_nets.keys().count(name) == 0:
+			if name.lower()!= "all"  and self.a_nets.keys().count(name) == 0:
 				self.log.warning("Warning","Network " +  self.log.bold(name) + " not found or not active"	)
 				return		
-			self.__runNet(name)
+			if  name.lower()!= "all":
+				self.__runNet(name)
+			else:
+				for app in self.a_nets:
+					self.__runNet(app)
 				
 		elif item == 'f':
 			self.log.plain("*********************************************")			
 			self.log.plain("*** Running KUBE for selected Filesystem: ***")
 			self.log.plain("*********************************************")
-			if self.a_filesys.keys().count(name) == 0:
+			if name.lower()!= "all"  and self.a_filesys.keys().count(name) == 0:
 				self.log.warning("Warning","Filesystem " +  self.log.bold(name) + " not found or not active"	)
 				return		
-			self.__runFilesys(name)
+			if  name.lower()!= "all":
+				self.__runFilesys(name)
+			else:
+				for app in self.a_filesys:
+					self.__runFilesys(app)
 		
 		elif item == 's':
 			self.log.plain("**********************************************")			
 			self.log.plain("***  Running KUBE for selected Synthetics: ***")
 			self.log.plain("**********************************************")
-			if self.a_synths.keys().count(name) == 0:
+			if name.lower()!= "all"  and self.a_synths.keys().count(name) == 0:
 				self.log.warning("Warning","Benchmark " +  self.log.bold(name) + " not found or not active"	)
 				return		
-			self.__runSynthetics(name)
+			if  name.lower()!= "all":
+				self.__runSynthetics(name)
+			else:
+				for app in self.a_synths:
+					self.__runSynthetics(app)
 
 		else:
 			print "Unknown item: '" + str(item) + "'"
@@ -834,7 +886,7 @@ set timefmt "%Y-%m-%d%H:%M:%S"
 		self.log.log(which)
 		app = self.a_apps[which]
 		source = self.home + "/bench/apps/"+ which + "/"
-		target = self.output_dir + "/"+ "runs/apps/" + which + "/"
+		target = self.runs_dir + "/apps/" + which + "/"
 		self.__runBasic(app,source,target,True)
 	
 
@@ -844,7 +896,7 @@ set timefmt "%Y-%m-%d%H:%M:%S"
 		self.log.log(which)
 		synth = self.a_synths[which]
 		source = self.home + "/bench/synthetics/"+ which + "/"
-		target = self.output_dir + "/" + "runs/synthetics/" + which + "/"
+		target = self.runs_dir + "/synthetics/" + which + "/"
 		self.__runBasic(synth,source,target)
 
 	def __runNet(self, which):
@@ -853,7 +905,7 @@ set timefmt "%Y-%m-%d%H:%M:%S"
 		self.log.log(which)
 		net = self.a_nets[which]
 		source = self.home + "/bench/networks/"+ which + "/"
-		target = self.output_dir + "/" + "runs/networks/" + which + "/"
+		target = self.runs_dir +  "/networks/" + which + "/"
 		self.__runBasic(net,source,target)
 
 	def __runFilesys(self, which):
@@ -862,7 +914,7 @@ set timefmt "%Y-%m-%d%H:%M:%S"
 		self.log.log(which)
 		net = self.a_filesys[which]
 		source = self.home + "/bench/filesystems/"+ which + "/"
-		target = self.output_dir + "/" + "runs/filesystems/" + which + "/"
+		target = self.runs_dir + "/filesystems/" + which + "/"
 		self.__runBasic(net,source,target)
 
 
@@ -1075,7 +1127,8 @@ set timefmt "%Y-%m-%d%H:%M:%S"
 		if item == None: # means show the global configuration	
 	
 			self.log.log("KUBE Home",self.home )
-			self.log.log("KUBE Outputs",self.output_dir )
+			self.log.log("KUBE Runs dir",self.runs_dir )
+			self.log.log("KUBE Analysis dir",self.analysis_dir )
 			self.log.log("KUBE Batch Systems:" )
 						
 			for nbatch in self.batchs:
@@ -1092,6 +1145,7 @@ set timefmt "%Y-%m-%d%H:%M:%S"
 			self.__printFSInfo()
 			self.__printNetInfo()
 			self.__printSynthInfo()
+
 
 		elif item == 'a':
 			self.log.plain("\n***  Showing configuration for selected App  ***\n")
@@ -1130,20 +1184,30 @@ set timefmt "%Y-%m-%d%H:%M:%S"
 							if str(self.a_apps[k][l][litem]).strip() != None or str(self.a_apps[k][l][litem]).strip() != '' :
 								Log.Level = 4								
 								self.log.log(litem ,str( self.a_apps[k][l][litem])  )
-		else:
-			if self.a_apps.keys().count(which) == 0:
+		else:	
+			if which.lower() != "all" and  self.a_apps.keys().count(which) == 0:
 				self.log.warning("Warning","Application " + self.log.bold(which)  + " not found or not active")
-			else:
-				for k in self.a_apps.keys():
-					if which==k:
+			else:	
+				if which.lower() != "all" :
+					for k in self.a_apps.keys():
+						if which==k:
+							mybatch=[]
+							for tapp in self.apps:
+							 if tapp['name'] == which :
+								mybatch = self.__getBatchSystem(tapp)
+							 	self.__printBatchSystemInfo(mybatch)
+								self.__printDatasetInfo(self.a_apps[which])
+							break;	
+				else:
+					for k in self.a_apps.keys():
 						mybatch=[]
 						for tapp in self.apps:
-						 if tapp['name'] == which:
-							mybatch = self.__getBatchSystem(tapp)
-						 	self.__printBatchSystemInfo(mybatch)
-							self.__printDatasetInfo(self.a_apps[which])
-						break;	
-	
+							if tapp['name'] == k:
+								mybatch = self.__getBatchSystem(tapp)
+					 			self.__printBatchSystemInfo(mybatch)
+								self.__printDatasetInfo(self.a_apps[k])
+
+
 	def __printFSInfo(self, which=None):
 		""" Prints out configuration information for a specific Filesystem benchmarks or for all filesystem benchmarks
 		"""
@@ -1211,20 +1275,32 @@ set timefmt "%Y-%m-%d%H:%M:%S"
 							Log.Level = 4
 							self.log.log(litem ,str( who[k][l][litem])  )
 		else:
-			if who.keys().count(which) == 0:
+			if which.lower() != "all" and  who.keys().count(which) == 0:
 				self.log.warning("Warning","Element " + self.log.bold(which)  + " not found or not active")
 			else:
 				Log.Level = 0	
-				self.log.log(str(which)+"\n","" )
-				for k in who.keys():
-					if which==k:
+				if which.lower() != "all":
+					self.log.log(str(which)+"\n","" )
+					for k in who.keys():
+						if which==k:
+							mybatch=[]
+							for elem in all:
+							 if elem['name'] == which:
+								mybatch = self.__getBatchSystem(elem)					
+								self.__printBatchSystemInfo(mybatch)
+								self.__printDatasetInfo(who[which])							
+							break;
+				else:	
+					for k in who.keys():
 						mybatch=[]
-						for elem in all:
-						 if elem['name'] == which:
-							mybatch = self.__getBatchSystem(elem)					
-							self.__printBatchSystemInfo(mybatch)
-							self.__printDatasetInfo(who[which])							
-						break;
+						self.log.log(str(k)+"\n","" )
+						for tapp in all:
+							if tapp['name'] == k:
+								mybatch = self.__getBatchSystem(tapp)
+					 			self.__printBatchSystemInfo(mybatch)
+								self.__printDatasetInfo(who[k])
+
+
 
 	def debug(self):
 		print "TODO: debug mode"
@@ -1257,7 +1333,7 @@ set timefmt "%Y-%m-%d%H:%M:%S"
 		# set i_apps and self.a_apps
 		self.i_apps = [ app['name'] for app in self.apps if not app['active'] ]	# List with the name of the inactive apps
 		self.a_apps = dict( [ (app['name'],app['datasets']) for app in self.apps if app['active'] ]) # Dictionary Name->Array of datasets  of active apps
-		
+
 		# update self.a_apps and remove inactive datasets... also if there is no active dataset remove app from the list of active apps
 		repeatf = True
 		while repeatf:
@@ -1274,6 +1350,9 @@ set timefmt "%Y-%m-%d%H:%M:%S"
 						elif dataset['active'] != True:
 							self.a_apps[napp].remove(dataset)
 							repeat = True
+						else:
+							dataset['bench'] = "apps"
+							dataset['parent'] = napp
 													
 				if len( self.a_apps[napp] ) == 0:
 					del(self.a_apps[napp])
@@ -1283,6 +1362,9 @@ set timefmt "%Y-%m-%d%H:%M:%S"
 		for appname in self.a_apps.keys():	
 			for a in self.apps:	
 				if a['name'] == appname:	 			
+					for gk in yaml_conf['KUBE'].keys():
+						if not gk in ["BATCH","BENCH"]  :
+							a[str(gk).lower()] =  yaml_conf['KUBE'][gk]['path']
 					for batch in self.batchs: 
 						if batch['name'] == a['batch']:
 							for key in batch.keys():
@@ -1295,12 +1377,15 @@ set timefmt "%Y-%m-%d%H:%M:%S"
 		for appname in self.a_apps.keys():	
 			for dataset in self.a_apps[appname]:
 				for a in self.apps:	
-					if a['name'] == appname:	
+					if a['name'] == appname:
+						notToReplace=['name','datasets','active']	
 						for sk in a.keys():
 							if sk=="batch": # Force the dataset to use always the batch system defined  for the app
 											# the 'batch' parameter is global to the app, not dataset specific 
 								dataset[sk] = a[sk] # no deepcopy needed as we want a reference to the batch system
-							elif  dataset.keys().count(sk)==0 and sk!="name" and sk!="dataset" and sk!="active" :
+							elif sk=="tools": # Force the dataset to use always the globally defined  value, no redefinition allowed
+								dataset[sk] = str(a[sk]) + "/" + str(dataset['bench'])  + "/" + str(dataset['parent']) + '/' # no deepcopy needed as we want a reference 
+							elif  dataset.keys().count(sk)==0 and not sk in notToReplace :
 								if a[sk] != None:
 									dataset[sk] = copy.deepcopy(a[sk])
 								else:
@@ -1313,7 +1398,7 @@ set timefmt "%Y-%m-%d%H:%M:%S"
 							self.log.error("Config file error"," Dataset of " + self.log.bold(appname) + " found without 'outputs'. This tag is mandatory!!!") 
 							self.log.error("Please revise your configuration file !!!")
 							sys.exit(1)	
-						
+
 						break # step out apps loop
 
 		self.__substituteVarsForAnalysis(self.a_apps)
@@ -1327,7 +1412,7 @@ set timefmt "%Y-%m-%d%H:%M:%S"
 		self.a_synths = dict( [ (synth['name'],synth['datasets']) for synth in self.synths if synth['active'] ]) # Dictionary Name->Array of datasets  of active networks
 		# update self.a_synths and remove inactive datasets ... also if there is no active dataset remove synthetic from the list of active items
 		self.__updateActiveElements(self.a_synths,"Synthetics")
-		self.__populateElements(self.a_synths, self.synths)
+		self.__populateElements(self.a_synths, self.synths,yaml_conf)
 		self.__substituteVarsForAnalysis(self.a_synths)
 	
 	def __readNets(self,yaml_conf):
@@ -1339,7 +1424,7 @@ set timefmt "%Y-%m-%d%H:%M:%S"
 		self.a_nets = dict( [ (net['name'],net['datasets']) for net in self.nets if net['active'] ]) # Dictionary Name->Array of datasets  of active networks
 		# update self.a_nets and remove inactive datasets ... also if there is no active dataset remove network from the list of active networks
 		self.__updateActiveElements( self.a_nets ,"Networks")
-		self.__populateElements(self.a_nets ,self.nets)
+		self.__populateElements(self.a_nets ,self.nets,yaml_conf)
 		self.__substituteVarsForAnalysis(self.a_nets)
 
 	def __readFilesystems(self,yaml_conf):
@@ -1351,7 +1436,7 @@ set timefmt "%Y-%m-%d%H:%M:%S"
 		self.a_filesys = dict( [ (fs['name'],fs['datasets']) for fs in self.filesys if fs['active'] ]) # Dictionary Name->Array of datasets  of active filesystems
 		# update self.a_filesys and remove inactive datasets ... also if there is no active dataset remove filesystem from the list of active filesystems
 		self.__updateActiveElements( self.a_filesys ,"Filesystems")
-		self.__populateElements(self.a_filesys ,self.filesys)
+		self.__populateElements(self.a_filesys ,self.filesys,yaml_conf)
 		self.__substituteVarsForAnalysis(self.a_filesys)
 
 
@@ -1378,6 +1463,7 @@ set timefmt "%Y-%m-%d%H:%M:%S"
 	# Substitute in the target string, all the matches contained in keysDict with the values in dataset[ ... ] 
 	def __substitute( self, strTarget , keysDict, dataset  ):
 		outputDict={}
+		strTarget = str(strTarget) # be sure strTarget is str :) 	
 		for sstr in keysDict.keys():
 			reple = re.compile( keysDict[sstr] )	
 			if reple.search( strTarget ) : # there is a match
@@ -1402,42 +1488,75 @@ set timefmt "%Y-%m-%d%H:%M:%S"
 			So, this function does this replacements of the references to the right values. The convention used
 			for a reference is %FIELD_NAME_IN_CAPITALS%	"""
 		# Replace inline variables in the ['outputs'] section inside each dataset
-		itemsToReplace=['outputs','dependencies','args','exe']
+		#itemsToReplace=['outputs','dependencies','args','exe']
+		itemsNotToReplace=['metrics','name','active','batch']
+		# name => bench name
 		for name in item.keys():	
 			for dataset in item[name]:
 				str2find = {}
+				# added
+				# all variables are susceptible to be replaced but the ones in itemsNotToReplace	
 				for nkey in dataset.keys():
-					# to avoid cyclic dependencies, remove the entries to be replaced from the search list
-					if nkey!='outputs' and  nkey!='metrics' and  nkey!='dependencies' and  nkey!='args' and  nkey!='exe': 
-						str2find[nkey]= "%"+ nkey.upper() +"%"		
-				for rkey in itemsToReplace:
-					if dataset.keys().count(rkey) != 0:
-						if rkey =='outputs':
-							for outpkey in dataset[rkey].keys():
-								if dataset[rkey][outpkey] != None: 
-									 retValue = self.__substitute( dataset[rkey][outpkey] , str2find, dataset )	
+					str2find[nkey] = "%"+ nkey.upper() +"%"		
+				for nkey in dataset.keys():
+					if dataset.keys().count(nkey) != 0 and not nkey in itemsNotToReplace:
+						if nkey =='outputs':
+							# iterate over every output	
+							for outpkey in dataset[nkey].keys():
+								if dataset[nkey][outpkey] != None: 
+									 retValue = self.__substitute( dataset[nkey][outpkey] , str2find, dataset )	
 									 if isinstance(retValue,dict):
 										for retKey in retValue.keys():
-											dataset[rkey]["#" + retKey + "#" + outpkey] = retValue[retKey]
+											dataset[nkey]["#" + retKey + "#" + outpkey] = retValue[retKey]
 										# and delete previous entry .. NOOOOOOOO dont delete cuz it will be used later on ... ie: metrics are not translated into a specific proc number until the end
-										#del dataset[rkey][outpkey]
+										#del dataset[nkey][outpkey]
 									 else:
-										 dataset[rkey][outpkey] = retValue 
+										 dataset[nkey][outpkey] = retValue 
 						else:
-							if dataset[rkey] != None: 
-								retValue = self.__substitute( dataset[rkey] , str2find, dataset )	
+							if dataset[nkey] != None:
+								retValue = self.__substitute( dataset[nkey] , str2find, dataset )	
 								if isinstance(retValue,dict):
 									for retKey in retValue.keys():
-										dataset["#" + retKey + "#" + rkey] = retValue[retKey]
+										dataset["#" + retKey + "#" + nkey] = retValue[retKey]
 									# and delete previous entry .. NOOOOOOOO dont delete cuz it will be used later on ... ie: metrics are not translated into a specific proc number until the end
-									#del dataset[rkey]
+									#del dataset[nkey]
 								else:
-									dataset[rkey]= retValue 					
+									dataset[nkey]= retValue 					
+
+				# added
+				#for nkey in dataset.keys():
+				#	# to avoid cyclic dependencies, remove the entries to be replaced from the search list
+				#	if not nkey in itemsToReplace: 
+				#		str2find[nkey]= "%"+ nkey.upper() +"%"		
+				#for rkey in itemsToReplace:
+				#	if dataset.keys().count(rkey) != 0:
+				#		if rkey =='outputs':
+				#			for outpkey in dataset[rkey].keys():
+				#				if dataset[rkey][outpkey] != None: 
+				#					 retValue = self.__substitute( dataset[rkey][outpkey] , str2find, dataset )	
+				#					 if isinstance(retValue,dict):
+				#						for retKey in retValue.keys():
+				#							dataset[rkey]["#" + retKey + "#" + outpkey] = retValue[retKey]
+				#						# and delete previous entry .. NOOOOOOOO dont delete cuz it will be used later on ... ie: metrics are not translated into a specific proc number until the end
+				#						#del dataset[rkey][outpkey]
+				#					 else:
+				#						 dataset[rkey][outpkey] = retValue 
+				#		else:
+				#			if dataset[rkey] != None: 
+				#				retValue = self.__substitute( dataset[rkey] , str2find, dataset )	
+				#				if isinstance(retValue,dict):
+				#					for retKey in retValue.keys():
+				#						dataset["#" + retKey + "#" + rkey] = retValue[retKey]
+				#					# and delete previous entry .. NOOOOOOOO dont delete cuz it will be used later on ... ie: metrics are not translated into a specific proc number until the end
+				#					#del dataset[rkey]
+				#				else:
+				#					dataset[rkey]= retValue 					
 								
 		# Replace inline variables in the ['metrics'] section inside each dataset ...
 		for name in item.keys():	
 			for dataset in item[name]:
 				str2find = {}
+				# replace metrics elements referred to the outputs ...
 				for nkey in dataset['outputs'].keys():
 					str2find[nkey]= "%"+ nkey.upper() +"%"
 				for sstr in str2find.keys():
@@ -1445,8 +1564,25 @@ set timefmt "%Y-%m-%d%H:%M:%S"
 					if ( dataset.keys().count('metrics') != 0 ):
 						for metric in dataset['metrics']:
 							for elem in metric:
-								metric[elem] = reple.sub(dataset['outputs'][sstr],metric[elem])		
-									
+								if elem != 'tolerance':
+									metric[elem] = reple.sub(dataset['outputs'][sstr],metric[elem])		
+								else:
+									for t in metric[elem]:
+										metric[elem][t] = reple.sub(dataset['outputs'][sstr], str(metric[elem][t]) ) 	
+				str2find = {}
+				str2find['tools'] = "%TOOLS%"
+				#str2find['tools_common'] = "%TOOLS_COMMON%"
+				for sstr in str2find.keys():
+					reple = re.compile( str2find[sstr] );
+					if ( dataset.keys().count('metrics') != 0 ):
+						for metric in dataset['metrics']:
+							for elem in metric:
+								if elem != 'tolerance':
+									metric[elem] = reple.sub(dataset[sstr],metric[elem])		
+								else:
+									for t in metric[elem]:
+										metric[elem][t] = reple.sub(dataset[sstr], str(metric[elem][t]) ) 	
+							
 	def __updateActiveElements(self,a_elems,mstr):	
 		repeatf = True
 		while repeatf:
@@ -1463,20 +1599,27 @@ set timefmt "%Y-%m-%d%H:%M:%S"
 						elif dataset['active'] != True:
 							a_elems[elem].remove(dataset)
 							repeat = True
-													
+						else:
+							dataset['bench'] = mstr.lower()
+							dataset['parent'] = elem						
+								
 				if len( a_elems[elem] ) == 0:
 					del(a_elems[elem])
 					repeatf = True
 
-	def	__populateElements(self,a_elems,elems):
+	def	__populateElements(self,a_elems,elems,yaml_conf):
 		# populate self.XXX with the batch parameters if they are not already set in the XXX entry:
+		# populate also de global tags values: HOME, RUNS, ANALYSIS, TOOLS ... 
 		for aname in a_elems.keys():	
 			for a in elems:	
 				if a['name'] == aname:	 			
+					for gk in yaml_conf['KUBE'].keys():
+						if not gk in ["BATCH","BENCH"]  :
+							a[str(gk).lower()] =  yaml_conf['KUBE'][gk]['path']
 					for batch in self.batchs: 
 						if batch['name'] == a['batch']:
 							for key in batch.keys():
-								if key!="name" and key!="script" and key!="monitor" and key!="submit" and a.keys().count(key)==0 :
+								if not key in ["name","script","monitor","submit"] and a.keys().count(key)==0 :
 									a[key] = copy.deepcopy( batch[key] )	 			
 							break # step out the batch loop
 					break # step out self.apps loop				
@@ -1487,9 +1630,11 @@ set timefmt "%Y-%m-%d%H:%M:%S"
 					if a['name'] == aname:	
 						for sk in a.keys():
 							if sk=="batch": # Force the dataset to use always the batch system defined  for the network
-											# the 'batch' parameter is global to all the network datasets 
+									# the 'batch' parameter is global to all the network datasets 
 								dataset[sk] = a[sk] # no deepcopy needed as we want a reference to the batch system
-							elif  dataset.keys().count(sk)==0 and sk!="name" and sk!="dataset" and sk!="active" :
+							elif sk=="tools": # Force the dataset to use always the globally defined  value, no redefinition allowed
+								dataset[sk] = str(a[sk]) + "/" + str(dataset['bench'])  + "/" + str(dataset['parent']) + '/' # no deepcopy needed as we want a reference 
+							elif  dataset.keys().count(sk)==0 and not sk in ["name","datasets","active"] :
 								if a[sk] != None:
 									dataset[sk] = copy.deepcopy(a[sk])
 								else:
@@ -1505,6 +1650,7 @@ set timefmt "%Y-%m-%d%H:%M:%S"
 							sys.exit(1)	
 								
 						break # step out 'a' loop		
+
 		
 	def __sanityBasic(self,elems,mstr):
 		# sanity check 
@@ -1535,26 +1681,42 @@ set timefmt "%Y-%m-%d%H:%M:%S"
 			self.log.error("Config file error", "KUBE head tag is not defined") 
 			sys.exit(1)	
 		if yaml_conf['KUBE'].keys().count("HOME") == 0 or \
-		   yaml_conf['KUBE'].keys().count("OUTPUTS") == 0 or \
+		   yaml_conf['KUBE'].keys().count("RUNS") == 0 or \
+		   yaml_conf['KUBE'].keys().count("ANALYSIS") == 0 or \
+		   yaml_conf['KUBE'].keys().count("TOOLS") == 0 or \
 		   yaml_conf['KUBE'].keys().count("BATCH") == 0 or \
 		   yaml_conf['KUBE'].keys().count("BENCH") == 0:
-			self.log.error("Config file error","HOME, OUTPUTS, BATCH and BENCH must be defined")
+			self.log.error("Config file error","HOME, RUNS, ANALYSIS, TOOLS, BATCH and BENCH must be defined")
 			sys.exit(1)			
 
 		#######################################################################################
 		# Set important variables
 		
 		# set home
-		self.home = yaml_conf['KUBE']['HOME']
+		self.home = yaml_conf['KUBE']['HOME']['path']
 		if self.home == None: 
 			self.log.error("Config file error","HOME must be defined")
 			sys.exit(1) 
 
-		#set outputs
-		self.output_dir = yaml_conf['KUBE']['OUTPUTS']
-		if re.match("[^/]",self.output_dir):
-			self.output_dir = self.home + "/" + self.output_dir
+		#set analysis
+		self.analysis_dir = yaml_conf['KUBE']['ANALYSIS']['path']
+		if re.match("[^/]",self.analysis_dir):
+			self.analysis_dir = self.home + "/" + self.analysis_dir
+			yaml_conf['KUBE']['ANALYSIS']['path'] = self.analysis_dir
 		
+		#set runs
+		self.runs_dir = yaml_conf['KUBE']['RUNS']['path']
+		self.runs_lifespan = int(yaml_conf['KUBE']['RUNS']['lifespan'])
+		if re.match("[^/]",self.runs_dir):
+			self.runs_dir = self.home + "/" + self.runs_dir
+			yaml_conf['KUBE']['RUNS']['path'] = self.runs_dir
+		
+		#set tools
+		self.tools_dir = yaml_conf['KUBE']['TOOLS']['path']
+		if re.match("[^/]",self.tools_dir):
+			self.tools_dir = self.home + "/" + self.tools_dir
+			yaml_conf['KUBE']['TOOLS']['path']= self.tools_dir
+
 		# set batchs
 		self.batchs = yaml_conf['KUBE']['BATCH']
 		if self.batchs==None:
@@ -1633,6 +1795,37 @@ set timefmt "%Y-%m-%d%H:%M:%S"
 		self.__loadYaml(configfile)
 		self.__substituteVarsInBatch_MANUAL()
 
+	def cleanOldRuns(self):
+		"""Function that removes old runs according to the 'lifespan' param"""
+		
+		if self.runs_lifespan == 0:
+			return	
+
+		# remove hidden files and dirs from the list
+		bench   = [ d for d in os.listdir(self.runs_dir)  if not re.match('\\.',d) and os.path.isdir(self.runs_dir + "/" +d) ]	
+		what    = [ b+'/'+l for b in bench for l in os.listdir(self.runs_dir+'/'+b)  if not re.match('\\.',l) and os.path.isdir(self.runs_dir + "/" +b+"/"+l) ]
+		dataset = [ w+'/'+d for w in what for d in  os.listdir(self.runs_dir+'/' + w) if not re.match('\\.',d) and os.path.isdir(self.runs_dir + "/" +w+"/"+d)  ]
+	
+		dateexp = re.compile("\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d")		
+
+		self.log.plain("***********************************************")	
+		self.log.plain( "Removing old runs according to current policy of " + self.log.bold(str(self.runs_lifespan)) + " days"  )
+		toRemove=[]
+		for d in dataset:
+			current = self.runs_dir + "/" + d
+			for e in os.listdir(current):
+				mobj = dateexp.search(e)
+				if mobj:
+					fecha = datetime.datetime.strptime( mobj.group(0) , '%Y-%m-%dT%H:%M:%S')	
+					now = datetime.datetime.now()
+					if  (now - fecha) > datetime.timedelta (days = self.runs_lifespan ):
+						toRemove.append( current + '/' + e )
+		for e in toRemove:
+			clean(e,True)
+			self.log.warning( e)
+		self.log.plain( self.log.bold(str(len(toRemove))) + " elements removed")
+		self.log.plain("***********************************************")	
+								
 		
 #####################################################################                                           
 #
@@ -1668,8 +1861,8 @@ if __name__ == "__main__":
 		print "You are about to remove all stored results from previous runs" 
 		var = raw_input("Are you sure you want to do that? (Yes/No)")	
 		if var=="Yes":			
-			clean(kube.output_dir+"/runs/")
-			clean(kube.output_dir+"/analysis/")
+			clean(kube.runs_dir+"/")
+			clean(kube.analysis_dir+"/")
  			print "Done."
 		else:
 			print  "Cleaning cancelled"
