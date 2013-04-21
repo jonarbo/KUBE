@@ -49,18 +49,26 @@ KUBE:
            exe: namd2_mpi
            modules:  module load gcc mpi-openmpi  libs-extra fftw2/2.1.5-openmpi-1.4.3-sse4.2-sp namd    
            metrics: 
+              - name: total_energy
+                units: joules
+                command: cat %OUTPUT% |  grep  ENERGY | gawk 'END{print $12}'   
+                tolerance:
+                        threshold: 0.001
+                        type: bilateral
+                        reference: cat %OUTREF% |  grep  ENERGY | gawk 'END{print $12}'
               - name: wallclock
                 units: secs
                 command: cat %OUTPUT% | grep WallClock | gawk '{print $2}'                
               - name: days_per_ns
                 units: days/ns
                 command: cat %OUTPUT% | grep  Benchmark | gawk 'END{print $8}' 
-                tolerance:      # Used to check if this metric is within the accepted threshold compared with the ref value obtained using 'command'
-                        threshold: 0.001     # could be Inf or -Inf 
+                tolerance:      # Used to check if this metric is within the accepted threshold compared with the ref value 
+                        threshold: 0.001     # expressed in % ... Also allowed 'Inf'  
                         type: bilateral # could be also 'greater' and 'lower'   
-                        #command: cat %OUTREF% | grep  Benchmark | gawk 'END{print $8}' 
-                        #command:  /%TOOLS%/printTolerance.sh %OUTPUT% %OUTREF%
-                        command:  cat %ANOTHER_OUTPUT%  %OUTREF% | egrep "ENERGY:\s+500" | gawk 'BEGIN{diff=0}{diff=$3-diff}END{print diff}'
+                        #reference: cat %OUTREF% | grep  Benchmark | gawk 'END{print $8}' 
+                        #reference:  /%TOOLS%/printTolerance.sh %OUTPUT% %OUTREF%
+                        #reference:  cat %ANOTHER_OUTPUT%  %OUTREF% | egrep "ENERGY:\s+500" | gawk 'BEGIN{diff=0}{diff=$3-diff}END{print diff}'  # a value is allowed as well  
+                        reference: cat %OUTREF% | grep  Benchmark | gawk 'END{print $8}'       
               - name: cputime
                 units: secs
                 command: cat %OUTPUT% | grep CPUTime | gawk '{print $4}'                     

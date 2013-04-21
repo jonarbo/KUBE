@@ -726,13 +726,42 @@ set timefmt "%Y-%m-%d%H:%M:%S"
 				radio = []
 				metrics = []
 				o = open( "analysis.csv","w")
-				o.write(  "\"metric\",\"value\",\"units\"\n" )
+				o.write(  "\"metric\",\"value\",\"units\",\"reference\",\"accuracy (%)\",\"validation\"\n" )
 				
-				for metric in dataset['metrics']:						
+				for metric in dataset['metrics']:
+				
+					if not (metric.keys().count('name') != 0 and metric.keys().count('command') != 0 and metric.keys().count('units') != 0) :
+						continue
+						
 					# Up to this point, values in Metrics may contain %VALUES% to be replaced ... so we have to do it now
 					name= metric['name']
 					command=metric['command']
 					units=metric['units']
+					reference  = ""
+					accuracy   = ""
+					validation = ""
+					threshold  = ""
+					type 	   = ""
+					refIsValue = True
+
+					if metric.keys().count('tolerance') != 0:
+						if not (metric['tolerance'].keys().count('threshold') != 0 and  metric['tolerance'].keys().count('type') != 0 and metric['tolerance'].keys().count('reference') != 0):
+							continue
+						try:
+							threshold = float(metric['tolerance']['threshold'])
+							type = metric['tolerance']['type']
+							reference = metric['tolerance']['reference']									
+							try:
+								reference = float( reference )
+								refIsValue = True			
+							except:
+								refIsValue = False			
+
+						except:
+							self.log.warning( "Skipping metric \'"+ name + "\' in dataset: \'" + dataset['name']  + "\' Please check out the config params for this metric." )
+							continue
+	
+
 					# replace references to the output section						
 					for outp in  dataset['outputs'].keys():
 						if not re.match( "#\d+#",outp  ):
@@ -741,16 +770,22 @@ set timefmt "%Y-%m-%d%H:%M:%S"
 								name    = reple.sub(  str(dataset['outputs']["#"+cpus+"#"+outp]) , name )	
 								units   = reple.sub(  str(dataset['outputs']["#"+cpus+"#"+outp]) ,units )	
 								command = reple.sub(  str(dataset['outputs']["#"+cpus+"#"+outp]) ,command )	
+								if not refIsValue:
+									reference = reple.sub(  str(dataset['outputs']["#"+cpus+"#"+outp]) ,reference )	
 							else:
 								name    = reple.sub(  str(dataset['outputs'][outp]) ,name )	
 								units   = reple.sub(  str(dataset['outputs'][outp]) , units)	
 								command = reple.sub(  str(dataset['outputs'][outp]) , command )	
+								if not refIsValue:
+									reference = reple.sub(  str(dataset['outputs'][outp]) ,reference )	
 					
 					# Now replace other variables from the dataset...
 					for tagp in  dataset.keys():
 						if tagp == 'numprocs':
 							reple = re.compile( "%NUMPROCS%" )
 							command = reple.sub( cpus , command)
+							if not refIsValue:
+								reference = reple.sub( cpus , reference)
 						else:	
 							# '%TOOLS%' does need ot be replaced since it was already done in __substituteVarsForAnalysis
 							if not tagp in ['outputs','metrics','tools'] and not isinstance(dataset[tagp],dict):
@@ -761,6 +796,8 @@ set timefmt "%Y-%m-%d%H:%M:%S"
 										name    = reple.sub( toSubst , name    )	
 										units   = reple.sub( toSubst , units   )	
 										command = reple.sub( toSubst , command )	
+										if not refIsValue:
+											reference = reple.sub( toSubst , reference)
 									else:
 										toSubst = str(dataset[tagp])	
 										# the following is not needed 
@@ -771,8 +808,27 @@ set timefmt "%Y-%m-%d%H:%M:%S"
 										name    = reple.sub( toSubst , name )	
 										units   = reple.sub( toSubst , units )	
 										command = reple.sub( toSubst , command)	
+										if not refIsValue:
+											reference = reple.sub( toSubst , reference)
+					
+					command_value = syscall(command)[0].strip()
+					ref_value = reference if refIsValue else syscall(reference)[0].strip()
+					if len(ref_value) != 0:
+						try:
+							accuracy = abs( ( float(command_value) - float(ref_value)  )/float(ref_value) * 100)
+							if type.lower() == 'bilateral':
+								validation = "Failed" if threshold<accuracy else "Passed"						
+							elif type.lower() == 'greater':	
+								validation = "Passed" if threshold>accuracy and ref_value<command_value else "Failed"						
+							elif type.lower() == 'lower':	
+								validation = "Passed" if threshold>accuracy and ref_value>command_value else "Failed"						
+							o.write( "\"" + name + "\"," + "\"" + command_value +"\"," +"\"" + units + "\",\"" +  ref_value + "\",\"" + str(accuracy)  + "\",\"" + validation + "\"\n"  ) 
+						except:
+							continue	
+					else:
+						o.write( "\"" + name + "\"," + "\"" + command_value +"\"," +"\"" + units + "\"\n"  ) 
 
-					o.write( "\"" + name + "\"," + "\"" + syscall(command)[0].strip() +"\"," +"\"" + units + "\"\n"  ) 
+					#o.write( "\"" + name + "\"," + "\"" + syscall(command)[0].strip() +"\"," +"\"" + units + "\"\n"  ) 
 					radio.append ( syscall( command )[0].strip() )				
 					metrics.append( name )
 		
