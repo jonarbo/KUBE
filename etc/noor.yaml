@@ -76,8 +76,8 @@ KUBE:
                 units: MB
                 command: cat %OUTPUT%  | grep Memory | gawk '{print $6}'         
               - name: prueba
-                units: Joules
-                command:  /%TOOLS%/printTolerance.sh %OUTPUT% %OUTREF%
+                units: Julios
+                command:  /%COMMON%/printCommonTolerance.sh %OUTPUT% %OUTREF%
               #- name: prueba2
               #  units: ninguna
               #  command: cat %ANOTHER_OUTPUT%               

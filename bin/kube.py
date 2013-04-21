@@ -788,7 +788,7 @@ set timefmt "%Y-%m-%d%H:%M:%S"
 								reference = reple.sub( cpus , reference)
 						else:	
 							# '%TOOLS%' does need ot be replaced since it was already done in __substituteVarsForAnalysis
-							if not tagp in ['outputs','metrics','tools'] and not isinstance(dataset[tagp],dict):
+							if not tagp in ['outputs','metrics','tools','common'] and not isinstance(dataset[tagp],dict):
 								if not re.match( "#\d+#",tagp  ):
 									reple = re.compile( "%"+str(tagp).upper()+"%" )
 									if dataset.keys().count( "#"+cpus+"#"+tagp) != 0:
@@ -1440,6 +1440,7 @@ set timefmt "%Y-%m-%d%H:%M:%S"
 											# the 'batch' parameter is global to the app, not dataset specific 
 								dataset[sk] = a[sk] # no deepcopy needed as we want a reference to the batch system
 							elif sk=="tools": # Force the dataset to use always the globally defined  value, no redefinition allowed
+								dataset['common'] = str(a[sk]) + "/common/"
 								dataset[sk] = str(a[sk]) + "/" + str(dataset['bench'])  + "/" + str(dataset['parent']) + '/' # no deepcopy needed as we want a reference 
 							elif  dataset.keys().count(sk)==0 and not sk in notToReplace :
 								if a[sk] != None:
@@ -1627,7 +1628,7 @@ set timefmt "%Y-%m-%d%H:%M:%S"
 										metric[elem][t] = reple.sub(dataset['outputs'][sstr], str(metric[elem][t]) ) 	
 				str2find = {}
 				str2find['tools'] = "%TOOLS%"
-				#str2find['tools_common'] = "%TOOLS_COMMON%"
+				str2find['common'] = "%COMMON%"
 				for sstr in str2find.keys():
 					reple = re.compile( str2find[sstr] );
 					if ( dataset.keys().count('metrics') != 0 ):
@@ -1689,6 +1690,7 @@ set timefmt "%Y-%m-%d%H:%M:%S"
 									# the 'batch' parameter is global to all the network datasets 
 								dataset[sk] = a[sk] # no deepcopy needed as we want a reference to the batch system
 							elif sk=="tools": # Force the dataset to use always the globally defined  value, no redefinition allowed
+								dataset['common'] = str(a[sk]) + "/common/"
 								dataset[sk] = str(a[sk]) + "/" + str(dataset['bench'])  + "/" + str(dataset['parent']) + '/' # no deepcopy needed as we want a reference 
 							elif  dataset.keys().count(sk)==0 and not sk in ["name","datasets","active"] :
 								if a[sk] != None:
