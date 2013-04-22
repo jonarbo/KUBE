@@ -829,19 +829,21 @@ set timefmt "%Y-%m-%d%H:%M:%S"
 						o.write( "\"" + name + "\"," + "\"" + command_value +"\"," +"\"" + units + "\"\n"  ) 
 
 					#o.write( "\"" + name + "\"," + "\"" + syscall(command)[0].strip() +"\"," +"\"" + units + "\"\n"  ) 
-					radio.append ( syscall( command )[0].strip() )				
+					#radio.append ( syscall( command )[0].strip() )				
+					radio.append ( command_value )				
 					metrics.append( name )
 		
 				o.flush()
 				o.close
-					
+				
 				sort_dict = zip(metrics, theta, radio)		
 				r = open( "analysis.raw","w")
 				for k in sort_dict:
 					r.write( str(k[0]) + "  "  + str(k[1]) + "  "  + str(k[2])   + "\n"  )
-					r.write( str(sort_dict[0][0])	 + "  "  + str(sort_dict[0][1]) + "  "  + str(sort_dict[0][2])    + "\n"  )
-					r.flush
-					r.close		
+				
+				r.write( str(sort_dict[0][0])	 + "  "  + str(sort_dict[0][1]) + "  "  + str(sort_dict[0][2])    + "\n"  )
+				r.flush
+				r.close		
 
 #####################################################################                                           
 #
