@@ -246,19 +246,24 @@ class KUBE:
 			tfc = tf.readline()
 		tf.close
 		
+		if template[len(template)-1] == '/':
+			template = template[:-1] 	
+		if target[len(target)-1] == '/':
+			target = target[:-1] 	
+		
 		legend.append(os.path.basename(template))	
 			
 		print "Reading data from target analysis:"
 		if (os.path.isfile(target+"/analysis.raw")):
 			Log.Level = 1
 			self.log.plain( self.log.bold(target ))
+			legend.append(os.path.basename(target))	
 			if not os.path.exists(target+"/analysis.raw"):
 				self.log.error("Data File not found!","The file " + self.log.bold( target+"/analysis.raw") + " could not be found" )
 				sys.exit(1)
 			tf = open(target+"/analysis.raw", 'r') 
 			ofc = tf.readline()
 			radio.append([])
-			legend.append(os.path.basename(target))	
 			while ofc:
 				line = ofc.split()
 				radio[len(radio)-1].append(line[2])
@@ -338,7 +343,7 @@ set grid polar
 	def timeAnalysis(self,target):		
 		""" Shows the time evolution of the metrics found in the 'target' dir.
 			'target' must contain a list of directories, preferably those created in the postprocess stage						
-			or at least they must contain the necessary files: analysis.raw and timestamp
+			or at least they must contain the necessary files: analysis.raw 
 			'target' may also be a partial name.
 			For instance:		
 			results/analysis/apps/namd/namd_apoa1/namd_apoa1_4cpus_1nodes_ 
@@ -350,7 +355,7 @@ set grid polar
 			sys.exit(1)
 			
  		metrics = []
- 		time = []
+ 		#time = []
  		
  		# set the legend from the run name:
 		title = os.path.basename(target)
@@ -368,37 +373,56 @@ set grid polar
 			u = os.listdir(target)
 		
 		for file in u:
-			if os.path.isfile(target + "/" + file + "/analysis.raw") and os.path.isfile(target + "/" + file + "/timestamp"):
+			if os.path.isfile(target + "/" + file + "/analysis.raw"):    # and os.path.isfile(target + "/" + file + "/timestamp"):
 				Log.Level = 1
 				self.log.plain( self.log.bold(target + "/"+ file ) )
 				
-				if not os.path.exists(target + "/" + file+"/analysis.raw") or  not os.path.exists(target + "/" + file+"/timestamp")  :
-					self.log.error("Data File not found!","The file " + self.log.bold( target + "/" + file+"/analysis.raw") + " and/or " +  self.log.bold( target + "/" + file+"/timestamp") + " could not be found...skipping" )
+				if not os.path.exists(target + "/" + file+"/analysis.raw"):  # or  not os.path.exists(target + "/" + file+"/timestamp")  :
+					#self.log.error("Data File not found!","The file " + self.log.bold( target + "/" + file+"/analysis.raw") + " and/or " +  self.log.bold( target + "/" + file+"/timestamp") + " could not be found...skipping" )
+					self.log.error("Data File not found!","The file " + self.log.bold( target + "/" + file+"/analysis.raw") + " could not be found...skipping" )
 					continue
 								
 				tf = open(target + "/" + file+"/analysis.raw", 'r') 
-				ts = open(target + "/" + file+"/timestamp", 'r') 
+				#ts = open(target + "/" + file+"/timestamp", 'r') 
 
 				ofc = tf.readline()
-				ots = ts.readline()
-				ts.close()
+				#ots = ts.readline()
+				#ts.close()
 
-				time.append(ots)
-				metrics.append({})				
+				#time.append(ots)
+				#time.append({})
+				metrics.append({})			
 				while ofc:
 					line = ofc.split()
-					metrics[len(metrics)-1][line[0]] = line[2] 
+					metrics[len(metrics)-1][line[0]] = ( line[2],line[3] ) 
+					#time[len(metrics)-1][line[0]] = line[3] 
 					ofc = tf.readline()	
 				tf.close
-
 		ofname={}
-		for it in range(0,len(time)):
-			for name in metrics[it]:
+		#for it in range(0,len(time)):
+		for m in metrics:
+			for name in m:
 				if ofname.keys().count(name) == 0:
 					ofname[name] = open( name + ".raw", 'w') 	
-				ofname[name].write( time[it] + ' ' + metrics[it][name] + '\n' )
+				ofname[name].write( m[name][1] + ' ' + m[name][0] + '\n' )
 				ofname[name].flush()
-					
+		
+		# sort the file 
+		for n in  metrics[0].keys():
+			f = open( n + ".raw", 'r') 	
+			lines = [line for line in f if line.strip()]
+			f.close()
+			lines.sort()
+			# now lines are sorted due to the Date format ;)
+			nlines = [ str(i)+' '+lines[i] for i in range(0,len(lines)) ]	
+			f = open( n + ".raw", 'w')
+			f.writelines(nlines) 	
+			f.close()
+
+		nplots = len (metrics[0].keys())
+		nplotsx = int(math.sqrt(nplots))
+		nplotsy = int(nplots/nplotsx) if nplotsx!=0 else nplots
+
 		# create gnuplot file
 		gnuplotfile = "metricsvstime.gnuplot"
 		kf = open(gnuplotfile,'w')
@@ -409,28 +433,39 @@ unset border
 set xtics axis 
 set ytics axis 
 set grid
-set xdata time
-set timefmt "%Y-%m-%d%H:%M:%S"
+#set xdata time
+#set timefmt "%Y-%m-%d%H:%M:%S"
 #set format x "%Y:%m:%d"
+set style fill solid 0.4
 """) 
-		kf.write( "set title \""+ target + "\" \n")
+		kf.write("set multiplot layout " + str(nplotsx) + "," + str(nplotsy) + " title \"" + target + "\"\n")
+		kf.write( "set mouse zoomjump\n")
+		#kf.write( "set title \""+ target + "\" \n")
 		
 		splotstr = " "
 		x11win = 0
 		for key in ofname.keys():		
-			splotstr = splotstr + "set term X11 " + str(x11win) + "\nplot '" + key+ ".raw' using 1:2 with linespoints title \"" + key + "\"\n" 
+			#splotstr = splotstr + "set term X11 " + str(x11win) + "\nplot '" + key+ ".raw' using 1:3:xtic(2) with filledcurve x1 title \"" + key + "\"\n" 
+			splotstr = splotstr + "plot '" + key+ ".raw' using 1:3:xtic(2) with linespoint  lc rgb variable lw 3 title \'"+ key  + "\'\n" 
 			x11win=x11win+1
 
 		kf.write( splotstr )
+		kf.write( "\nunset multiplot\n")
 		kf.flush()
 		kf.close()
 			
 		# close files	
-		for it in range(0,len(time)):
-			for name in metrics[it]:
+		for m in metrics:
+			for name in m:
 				if ofname.keys().count(name) != 0:
 					ofname[name].close()
 					del ofname[name]
+
+		#for it in range(0,len(time)):
+		#	for name in metrics[it]:
+		#		if ofname.keys().count(name) != 0:
+		#			ofname[name].close()
+		#			del ofname[name]
 			
 		# and call it
 		print syscall ( "gnuplot -persist " + gnuplotfile )[1]
@@ -674,10 +709,11 @@ set timefmt "%Y-%m-%d%H:%M:%S"
 			reple = re.compile( str2find )
 			mobj = reple.search(i)
 			timestamp = mobj.group(1)
-			ts = open( "timestamp","w")
-			ts.write( timestamp  )
-			ts.flush
-			ts.close		
+			# NO need a file anymore since it is included in the analysis.raw file
+			#ts = open( "timestamp","w")
+			#tsa.write( timestamp  )
+			#ts.flush
+			#ts.close		
 
 			# Copy the outputs needed ...
 			for outp in  dataset['outputs'].keys():
@@ -725,6 +761,7 @@ set timefmt "%Y-%m-%d%H:%M:%S"
 				theta = frange(START,END,STEP)		
 				radio = []
 				metrics = []
+				ref_value_a = []
 				o = open( "analysis.csv","w")
 				o.write(  "\"metric\",\"value\",\"units\",\"reference\",\"accuracy (%)\",\"validation\"\n" )
 				
@@ -742,6 +779,7 @@ set timefmt "%Y-%m-%d%H:%M:%S"
 					validation = ""
 					threshold  = ""
 					type 	   = ""
+					ref_value  = ""
 					refIsValue = True
 
 					if metric.keys().count('tolerance') != 0:
@@ -831,17 +869,18 @@ set timefmt "%Y-%m-%d%H:%M:%S"
 					#o.write( "\"" + name + "\"," + "\"" + syscall(command)[0].strip() +"\"," +"\"" + units + "\"\n"  ) 
 					#radio.append ( syscall( command )[0].strip() )				
 					radio.append ( command_value )				
+					ref_value_a.append(ref_value)
 					metrics.append( name )
 		
 				o.flush()
 				o.close
 				
-				sort_dict = zip(metrics, theta, radio)		
+				sort_dict = zip(metrics, theta, radio, ref_value_a)		
 				r = open( "analysis.raw","w")
 				for k in sort_dict:
-					r.write( str(k[0]) + "  "  + str(k[1]) + "  "  + str(k[2])   + "\n"  )
+					r.write( str(k[0]) + "  "  + str(k[1]) + "  "  + str(k[2]) + "  " + timestamp  + "  " + str(k[3]) + "\n"  )
 				
-				r.write( str(sort_dict[0][0])	 + "  "  + str(sort_dict[0][1]) + "  "  + str(sort_dict[0][2])    + "\n"  )
+				r.write( str(sort_dict[0][0])	 + "  "  + str(sort_dict[0][1]) + "  "  + str(sort_dict[0][2]) + "  " + timestamp   + "  " + str(sort_dict[0][3])  + "\n"  )
 				r.flush
 				r.close		
 
