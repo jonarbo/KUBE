@@ -340,14 +340,12 @@ set grid polar
 #	Display time evolution of the metrics
 #
 #####################################################################  
-	def timeAnalysis(self,target):		
+	def timeAnalysis(self,target,metric_names=None):		
 		""" Shows the time evolution of the metrics found in the 'target' dir.
-			'target' must contain a list of directories, preferably those created in the postprocess stage						
-			or at least they must contain the necessary files: analysis.raw 
-			'target' may also be a partial name.
+			'target' must contain a list of directories created 
+			in the postprocess stage that contain the analysis.raw file.
 			For instance:		
-			results/analysis/apps/namd/namd_apoa1/namd_apoa1_4cpus_1nodes_ 
-			then all the directories starting with 'namd_apoa1_4cpus_1nodes_' will be processed				
+			results/analysis/apps/namd/namd_apoa1/4cpus_1nodes 
 		"""
 		
 		if not target:
@@ -355,117 +353,128 @@ set grid polar
 			sys.exit(1)
 			
  		metrics = []
- 		#time = []
- 		
+ 		print metric_names
  		# set the legend from the run name:
-		title = os.path.basename(target)
-		if len(title)==0:
-			title = os.path.basename( str(os.path.dirname(target))[1:len(str(os.path.dirname(target)))] )
-		
-		print "Reading data from "+ self.log.bold(target) + " analysis:"
+		title_run = os.path.basename(target)
+		title_dataset=''
+		if len(title_run)==0:
+			title_run = os.path.basename( str(os.path.dirname(target))[1:len(str(os.path.dirname(target)))] )
+			title_dataset = os.path.dirname( str(os.path.dirname(target))[1:len(str(os.path.dirname(target)))]  )
+		else:
+			title_dataset = os.path.dirname(target)
+		title_bench =  os.path.basename( os.path.dirname( title_dataset  ))	
+		title_dataset = os.path.basename(title_dataset)
+	
+
+		print "Reading data from "+ self.log.bold(target) 
 
 		if not os.path.isdir(target):
-			for root, dirnames, filenames in os.walk(os.path.dirname(target)):
-				u = [ dir for dir in dirnames if re.match(os.path.basename(target), dir) ]
-				target = os.path.dirname(target)
-				break
-		else:
-			u = os.listdir(target)
+			self.log.error("Wrong argument. Path to directory expected.")
+			sys.exit(1)
 		
+		u = os.listdir(target)
 		for file in u:
 			if os.path.isfile(target + "/" + file + "/analysis.raw"):    # and os.path.isfile(target + "/" + file + "/timestamp"):
 				Log.Level = 1
 				self.log.plain( self.log.bold(target + "/"+ file ) )
 				
 				if not os.path.exists(target + "/" + file+"/analysis.raw"):  # or  not os.path.exists(target + "/" + file+"/timestamp")  :
-					#self.log.error("Data File not found!","The file " + self.log.bold( target + "/" + file+"/analysis.raw") + " and/or " +  self.log.bold( target + "/" + file+"/timestamp") + " could not be found...skipping" )
 					self.log.error("Data File not found!","The file " + self.log.bold( target + "/" + file+"/analysis.raw") + " could not be found...skipping" )
 					continue
 								
 				tf = open(target + "/" + file+"/analysis.raw", 'r') 
-				#ts = open(target + "/" + file+"/timestamp", 'r') 
-
 				ofc = tf.readline()
-				#ots = ts.readline()
-				#ts.close()
 
-				#time.append(ots)
-				#time.append({})
 				metrics.append({})			
 				while ofc:
 					line = ofc.split()
-					metrics[len(metrics)-1][line[0]] = ( line[2],line[3] ) 
-					#time[len(metrics)-1][line[0]] = line[3] 
-					ofc = tf.readline()	
+					if metric_names==None or ( metric_names!=None and line[0] in metric_names ): 
+						if len(line)>5:
+							metrics[len(metrics)-1][line[0]] = ( line[3],line[4],line[1],line[5] ) 
+						else:
+							metrics[len(metrics)-1][line[0]] = ( line[3],line[4],line[1] ) 
+					ofc = tf.readline()
+				if len( metrics[len(metrics)-1]) == 0:
+					metrics.pop()	
 				tf.close
-		ofname={}
-		#for it in range(0,len(time)):
-		for m in metrics:
-			for name in m:
-				if ofname.keys().count(name) == 0:
-					ofname[name] = open( name + ".raw", 'w') 	
-				ofname[name].write( m[name][1] + ' ' + m[name][0] + '\n' )
-				ofname[name].flush()
+			else:
+				if os.path.isfile(target + "/" + file):
+					self.log.warning(self.log.bold( file ) + " is not a directory")
+				else:		
+					self.log.warning("No data found in: " + self.log.bold( target + "/" + file ) )
 		
-		# sort the file 
-		for n in  metrics[0].keys():
-			f = open( n + ".raw", 'r') 	
-			lines = [line for line in f if line.strip()]
-			f.close()
-			lines.sort()
-			# now lines are sorted due to the Date format ;)
-			nlines = [ str(i)+' '+lines[i] for i in range(0,len(lines)) ]	
-			f = open( n + ".raw", 'w')
-			f.writelines(nlines) 	
-			f.close()
+		if len(metrics)==0:
+			self.log.warning("No metric information found!!!")
+			return
+	
+		ofname={}
+		for m in metrics:
+			for name in m.keys():
+				if ofname.keys().count(name) == 0:
+					ofname[name] =[ open( name + ".raw", 'w'),'' ] 
+				if len(m[name])>3:
+					ofname[name][0].write( m[name][1] + ' ' + m[name][0] + ' ' + m[name][3]  +  '\n' )
+				else:
+					ofname[name][0].write( m[name][1] + ' ' + m[name][0] +  '\n' )
+				ofname[name][1] =  m[name][2]
+				ofname[name][0].flush()
+
+		# now close the files
+		donelist = []
+		for m in metrics:
+			for name in m.keys():
+				if not name in donelist and ofname.keys().count(name) != 0:
+					ofname[name][0].close()
+					ofname[name][0] = open( name + ".raw", 'r') 	
+					lines = [line for line in ofname[name][0] if line.strip()]
+					ofname[name][0].close()
+					lines.sort()
+					# now lines are sorted due to the Date format ;)
+					nlines = [ str(i)+' '+lines[i] for i in range(0,len(lines)) ]	
+					ofname[name][0] = open( name + ".raw", 'w')
+					ofname[name][0].writelines(nlines) 	
+					ofname[name][0].close()
+					donelist.append(name)
 
 		nplots = len (metrics[0].keys())
-		nplotsx = int(math.sqrt(nplots))
-		nplotsy = int(nplots/nplotsx) if nplotsx!=0 else nplots
+		nplotsx = math.ceil(math.sqrt(nplots))
+		nplotsy = math.ceil(nplots/nplotsx) if nplotsx!=0 else nplots
 
 		# create gnuplot file
 		gnuplotfile = "metricsvstime.gnuplot"
 		kf = open(gnuplotfile,'w')
 		kf.write(
 		"""
-set clip points
+#set clip points
 unset border
 set xtics axis 
 set ytics axis 
 set grid
-#set xdata time
-#set timefmt "%Y-%m-%d%H:%M:%S"
-#set format x "%Y:%m:%d"
 set style fill solid 0.4
-""") 
-		kf.write("set multiplot layout " + str(nplotsx) + "," + str(nplotsy) + " title \"" + target + "\"\n")
-		kf.write( "set mouse zoomjump\n")
-		#kf.write( "set title \""+ target + "\" \n")
+""")
+		if len(ofname.keys()) >1:	
+			kf.write("set key off\n")
+			kf.write("set multiplot layout " + str(nplotsx) + "," + str(nplotsy) + " title \"Benchmark:" +title_bench + " , Dataset:"+ title_dataset+  " , Run:" + title_run + "\"\n")
+			kf.write( "set mouse zoomjump\n")
+			splotstr = " "
+			for key in ofname.keys():		
+				splotstr = splotstr + "set title \'"+ key + "\' font \'Bold\'\n"
+				splotstr = splotstr + "set ylabel \'"+ ofname[key][1]  +"\'\n" 
+				splotstr = splotstr + "plot '" + key+ ".raw' using 1:3:xtic(2) with linespoint  lc rgb variable lw  2" +  ", '" + key+ ".raw' using 1:4:xtic(2) with linespoint title 'reference'\n" 
+	
+			kf.write( splotstr )
+			kf.write( "\nunset multiplot\n")
+		else:	
+			key = ofname.keys()[0]
+			kf.write("set title \"Benchmark:" +title_bench + " , Dataset:"+ title_dataset+  " , Run:" + title_run + "\"\n")
+			#kf.write("plot '" + key +".raw' using 1:3:xtic(2) with linespoint  lc rgb variable lw 3  title \"" + key + "\"\n")
+			kf.write( "plot '" + key+ ".raw' using 1:3:xtic(2) with linespoint  lw 2 title \"" + key  + '\"'  +  ",'" + key+ ".raw' using 1:4:xtic(2) with linespoint title 'reference'\n" )
+			# this would allow to make zoom the the window but for some reason, when the window is closed the process still waits for something from the system and hangs..
+			#kf.write("pause -1\n")
 		
-		splotstr = " "
-		x11win = 0
-		for key in ofname.keys():		
-			#splotstr = splotstr + "set term X11 " + str(x11win) + "\nplot '" + key+ ".raw' using 1:3:xtic(2) with filledcurve x1 title \"" + key + "\"\n" 
-			splotstr = splotstr + "plot '" + key+ ".raw' using 1:3:xtic(2) with linespoint  lc rgb variable lw 3 title \'"+ key  + "\'\n" 
-			x11win=x11win+1
-
-		kf.write( splotstr )
-		kf.write( "\nunset multiplot\n")
+			
 		kf.flush()
 		kf.close()
-			
-		# close files	
-		for m in metrics:
-			for name in m:
-				if ofname.keys().count(name) != 0:
-					ofname[name].close()
-					del ofname[name]
-
-		#for it in range(0,len(time)):
-		#	for name in metrics[it]:
-		#		if ofname.keys().count(name) != 0:
-		#			ofname[name].close()
-		#			del ofname[name]
 			
 		# and call it
 		print syscall ( "gnuplot -persist " + gnuplotfile )[1]
@@ -640,17 +649,19 @@ set style fill solid 0.4
 		if not os.path.exists(analysisdir):
 			os.makedirs(analysisdir)
 		# Analyze every run which is not already been analyzed
-		runs = os.listdir(rundir)
+		# runs = os.listdir(rundir)
+		allruns = dict( [ [r,os.listdir(rundir+'/'+r)] for r in os.listdir(rundir)])	
 		# now remove the known failure dirs
 		repeat = True
-		while repeat:
-			repeat = False
-			for r in runs:
-				if re.match("FAILED_",r) !=	None:
-					runs.remove(r)		
-					repeat = True
-					break		
-		
+		while repeat and len(allruns.keys())!=0:
+			for k in allruns.keys():
+				repeat = False
+				for r in allruns[k]:
+					if re.match("FAILED_",r) !=	None:
+						allruns[k].remove(r)		
+						repeat = True
+						break		
+
 		# This code eliminates the need to re-analyze  an already analyzed run ...
 		# But I commented this because it could be useful to re-analyze a run because the user
 		# might have changed the metrics configuration ... for example  			
@@ -673,216 +684,214 @@ set style fill solid 0.4
 				cmd =  batch['monitor']
 				if cmd != None:
 					repeat = True
-					while repeat:
-						repeat = False
-						for r in runs:
-							files = os.listdir(rundir + "/" + r)
-							for f in files:
-								if re.match("batch.jobid",f) :
-									jobid = re.search("\d+$",f).group(0)
-									ncmd = re.sub("%JOBID%",jobid,cmd) 
-									out,err = syscall( ncmd )	
-									if out.strip()==jobid.strip():
-										# the job is running ... remove it from the list
-										runs.remove(r)
-										repeat = True										
-									break		
-		u = runs			
+					while repeat and len(allruns.keys())!=0:
+						for k in allruns.keys():
+							repeat = False
+							for r in allruns[k]:
+								files = os.listdir(rundir + "/" + k + "/" + r)
+								for f in files:
+									if re.match("batch.jobid",f) :
+										jobid = re.search("\d+$",f).group(0)
+										ncmd = re.sub("%JOBID%",jobid,cmd) 
+										out,err = syscall( ncmd )	
+										if out.strip()==jobid.strip():
+											# the job is running ... remove it from the list
+											allruns[k].remove(r)
+											repeat = True										
+										break		
+		u = allruns
+		print u			
 		if len(u) == 0:
 			self.log.plain("No new runs to analyze")	
 			return
 		# create analysis dir for each  run
-		for i in u:
-			os.chdir( analysisdir )
-			if not os.path.exists(i):
-				os.makedirs(i)
-			os.chdir( i )
+		START = 0.0
+		END = 2*math.pi
+		for rd in u:
 			
 			#get the cpus from the run name:
-			str2find = "_(\d+)cpus_"	
+			str2find = "(\d+)cpus_"	
 			reple = re.compile( str2find )
-			mobj = reple.search(i)
+			mobj = reple.search(rd)
 			cpus = mobj.group(1)
-
-			# get the timestamp from the run name:
-			str2find = "_([^_]+)$"	
-			reple = re.compile( str2find )
-			mobj = reple.search(i)
-			timestamp = mobj.group(1)
-			# NO need a file anymore since it is included in the analysis.raw file
-			#ts = open( "timestamp","w")
-			#tsa.write( timestamp  )
-			#ts.flush
-			#ts.close		
-
-			# Copy the outputs needed ...
-			for outp in  dataset['outputs'].keys():
-				failed = False
-				mobj = re.match("#(\d+)#", outp)
-				if mobj:
-					# the output key contains a reference to the number of cpus used ...
-					# this is it because we may have some different outputs' name 
-					# related to the number of cpus used.	
-					if mobj.group(1) == cpus:
-						if os.path.isfile(rundir + "/" + i + "/" + dataset['outputs'][outp]) :					
-							shutil.copy( rundir + "/" + i + "/" + dataset['outputs'][outp] , "./")
-						else:
-							self.log.waring("Warning","File " + self.log.bold( rundir + "/" + i + "/" + str(dataset['outputs'][outp]) ) + " Does not exist.")
-							self.log.error("Analysis not completed!!!")
-							failed = True
-							break
-				else:
-					# Now be sure to skip the key that originated the cpu dependency ...
-					skip = False
-					for again_outp in  dataset['outputs'].keys():				
-						if re.match("#"+cpus+"#"+outp , again_outp):
-							skip = True
-							break								
-					if not skip:
-						if os.path.isfile(rundir + "/" + i + "/" + dataset['outputs'][outp]) :					
-							shutil.copy( rundir + "/" + i + "/" + dataset['outputs'][outp] , "./")
-						else:
-							self.log.warning("Warning","File " + self.log.bold( rundir + "/" + i + "/" + str(dataset['outputs'][outp]) ) + " Does not exist.")
-							self.log.error("Analysis not completed!!!")
-							failed = True
-							break		
-
-				
-				if failed == True:
-					continue
 			
-			# output data copied
-			# now compute the metrics
-			if  dataset.keys().count('metrics') != 0 :
+			for i in u[rd]:
+				os.chdir( analysisdir )
+				if not os.path.exists(rd+"/"+i):
+					os.makedirs(rd+"/"+i)
+			
+				timestamp = i
+
+				# Copy the outputs needed ...
+				for outp in  dataset['outputs'].keys():
+					failed = False
+					mobj = re.match("#(\d+)#", outp)
+					if mobj:
+						# the output key contains a reference to the number of cpus used ...
+						# this is it because we may have some different outputs' name 
+						# related to the number of cpus used.	
+						if mobj.group(1) == cpus:
+							if os.path.isfile(rundir + "/" + rd + "/" + i + "/" + dataset['outputs'][outp]) :					
+								shutil.copy( rundir + "/" + rd + "/" + i + "/" + dataset['outputs'][outp] , rd+"/"+i+"/")
+							else:
+								self.log.waring("Warning","File " + self.log.bold( rundir + "/" + rd + "/" + i + "/" + str(dataset['outputs'][outp]) ) + " Does not exist.")
+								self.log.error("Analysis not completed!!!")
+								failed = True
+								break
+					else:
+						# Now be sure to skip the key that originated the cpu dependency ...
+						skip = False
+						for again_outp in  dataset['outputs'].keys():				
+							if re.match("#"+cpus+"#"+outp , again_outp):
+								skip = True
+								break								
+						if not skip:
+							if os.path.isfile(rundir + "/" + rd + "/" + i + "/" + dataset['outputs'][outp]) :					
+								shutil.copy( rundir + "/" + rd + "/" + i + "/" + dataset['outputs'][outp] , rd + "/"+ i +"/")
+							else:
+								self.log.warning("Warning","File " + self.log.bold( rundir + "/" + rd + "/" + i + "/" + str(dataset['outputs'][outp]) ) + " Does not exist.")
+								self.log.error("Analysis not completed!!!")
+								failed = True
+								break		
+				
+					if failed == True:
+						continue
+
+			
+				# output data copied for this run
+				
 				# now crate a .csv and the .raw file suitable to be used later on with gnuplot...
-				START = 0.0
-				END = 2*math.pi
+				o = open( rd +"/"+i + "/analysis.csv","w")
+				r = open( rd +"/"+i + "/analysis.raw","w")
+				o.write(  "\"metric\",\"value\",\"units\",\"reference\",\"accuracy (%)\",\"validation\"\n" )
 				STEP =  END/len(dataset['metrics'])	
 				theta = frange(START,END,STEP)		
 				radio = []
 				metrics = []
 				ref_value_a = []
-				o = open( "analysis.csv","w")
-				o.write(  "\"metric\",\"value\",\"units\",\"reference\",\"accuracy (%)\",\"validation\"\n" )
-				
-				for metric in dataset['metrics']:
-				
-					if not (metric.keys().count('name') != 0 and metric.keys().count('command') != 0 and metric.keys().count('units') != 0) :
-						continue
-						
-					# Up to this point, values in Metrics may contain %VALUES% to be replaced ... so we have to do it now
-					name= metric['name']
-					command=metric['command']
-					units=metric['units']
-					reference  = ""
-					accuracy   = ""
-					validation = ""
-					threshold  = ""
-					type 	   = ""
-					ref_value  = ""
-					refIsValue = True
+				units_a = []
+				os.chdir(rd + "/" + i)				
 
-					if metric.keys().count('tolerance') != 0:
-						if not (metric['tolerance'].keys().count('threshold') != 0 and  metric['tolerance'].keys().count('type') != 0 and metric['tolerance'].keys().count('reference') != 0):
+				# Now make the replacements and prepare commands ...
+				if dataset.keys().count('metrics') != 0:	
+		 			for metric in  dataset['metrics']:
+						if not (metric.keys().count('name') != 0 and metric.keys().count('command') != 0 and metric.keys().count('units') != 0) :
 							continue
-						try:
-							threshold = float(metric['tolerance']['threshold'])
-							type = metric['tolerance']['type']
-							reference = metric['tolerance']['reference']									
+					
+						# Up to this point, values in Metrics may contain %VALUES% to be replaced ... so we have to do it now
+						name= metric['name']
+						command=metric['command']
+						units=metric['units']
+						reference  = ""
+						accuracy   = ""
+						validation = ""
+						threshold  = ""
+						type 	   = ""
+						ref_value  = ""
+						refIsValue = True
+				
+						if metric.keys().count('tolerance') != 0:
+							if not (metric['tolerance'].keys().count('threshold') != 0 and  metric['tolerance'].keys().count('type') != 0 and metric['tolerance'].keys().count('reference') != 0):
+								continue
 							try:
-								reference = float( reference )
-								refIsValue = True			
-							except:
-								refIsValue = False			
-
-						except:
-							self.log.warning( "Skipping metric \'"+ name + "\' in dataset: \'" + dataset['name']  + "\' Please check out the config params for this metric." )
-							continue
+								threshold = float(metric['tolerance']['threshold'])
+								type = metric['tolerance']['type']
+								reference = metric['tolerance']['reference']									
+								try:
+									reference = float( reference )
+									refIsValue = True			
+								except:
+									refIsValue = False			
 	
+							except:
+								self.log.warning( "Skipping metric \'"+ name + "\' in dataset: \'" + dataset['name']  + "\' Please check out the config params for this metric." )
+								continue
 
-					# replace references to the output section						
-					for outp in  dataset['outputs'].keys():
-						if not re.match( "#\d+#",outp  ):
-							reple = re.compile( "%"+str(outp).upper()+"%" )
-							if dataset['outputs'].keys().count( "#"+cpus+"#"+outp) != 0:
-								name    = reple.sub(  str(dataset['outputs']["#"+cpus+"#"+outp]) , name )	
-								units   = reple.sub(  str(dataset['outputs']["#"+cpus+"#"+outp]) ,units )	
-								command = reple.sub(  str(dataset['outputs']["#"+cpus+"#"+outp]) ,command )	
-								if not refIsValue:
-									reference = reple.sub(  str(dataset['outputs']["#"+cpus+"#"+outp]) ,reference )	
-							else:
-								name    = reple.sub(  str(dataset['outputs'][outp]) ,name )	
-								units   = reple.sub(  str(dataset['outputs'][outp]) , units)	
-								command = reple.sub(  str(dataset['outputs'][outp]) , command )	
-								if not refIsValue:
-									reference = reple.sub(  str(dataset['outputs'][outp]) ,reference )	
-					
-					# Now replace other variables from the dataset...
-					for tagp in  dataset.keys():
-						if tagp == 'numprocs':
-							reple = re.compile( "%NUMPROCS%" )
-							command = reple.sub( cpus , command)
-							if not refIsValue:
-								reference = reple.sub( cpus , reference)
-						else:	
-							# '%TOOLS%' does need ot be replaced since it was already done in __substituteVarsForAnalysis
-							if not tagp in ['outputs','metrics','tools','common'] and not isinstance(dataset[tagp],dict):
-								if not re.match( "#\d+#",tagp  ):
-									reple = re.compile( "%"+str(tagp).upper()+"%" )
-									if dataset.keys().count( "#"+cpus+"#"+tagp) != 0:
-										toSubst = str(dataset["#"+cpus+"#"+tagp])	
-										name    = reple.sub( toSubst , name    )	
-										units   = reple.sub( toSubst , units   )	
-										command = reple.sub( toSubst , command )	
-										if not refIsValue:
-											reference = reple.sub( toSubst , reference)
-									else:
-										toSubst = str(dataset[tagp])	
-										# the following is not needed 
-										#if tagp == "tools":
-										#	who  = os.path.basename(runsd[1:len(runsd)-1])
-										#	what = os.path.basename(os.path.dirname(runsd[1:len(runsd)-1]))  
-										#	toSubst = str(dataset[tagp]) + "/" + what + "/" + who + "/"	
-										name    = reple.sub( toSubst , name )	
-										units   = reple.sub( toSubst , units )	
-										command = reple.sub( toSubst , command)	
-										if not refIsValue:
-											reference = reple.sub( toSubst , reference)
-					
-					command_value = syscall(command)[0].strip()
-					ref_value = reference if refIsValue else syscall(reference)[0].strip()
-					if len(ref_value) != 0:
-						try:
-							accuracy = abs( ( float(command_value) - float(ref_value)  )/float(ref_value) * 100)
-							if type.lower() == 'bilateral':
-								validation = "Failed" if threshold<accuracy else "Passed"						
-							elif type.lower() == 'greater':	
-								validation = "Passed" if threshold>accuracy and ref_value<command_value else "Failed"						
-							elif type.lower() == 'lower':	
-								validation = "Passed" if threshold>accuracy and ref_value>command_value else "Failed"						
-							o.write( "\"" + name + "\"," + "\"" + command_value +"\"," +"\"" + units + "\",\"" +  ref_value + "\",\"" + str(accuracy)  + "\",\"" + validation + "\"\n"  ) 
-						except:
-							continue	
-					else:
-						o.write( "\"" + name + "\"," + "\"" + command_value +"\"," +"\"" + units + "\"\n"  ) 
 
-					#o.write( "\"" + name + "\"," + "\"" + syscall(command)[0].strip() +"\"," +"\"" + units + "\"\n"  ) 
-					#radio.append ( syscall( command )[0].strip() )				
-					radio.append ( command_value )				
-					ref_value_a.append(ref_value)
-					metrics.append( name )
-		
+						# replace references to the output section						
+						for outp in  dataset['outputs'].keys():
+							if not re.match( "#\d+#",outp  ):
+								reple = re.compile( "%"+str(outp).upper()+"%" )
+								if dataset['outputs'].keys().count( "#"+cpus+"#"+outp) != 0:
+									name    = reple.sub(  str(dataset['outputs']["#"+cpus+"#"+outp]) , name )	
+									units   = reple.sub(  str(dataset['outputs']["#"+cpus+"#"+outp]) ,units )	
+									command = reple.sub(  str(dataset['outputs']["#"+cpus+"#"+outp]) ,command )	
+									if not refIsValue:
+										reference = reple.sub(  str(dataset['outputs']["#"+cpus+"#"+outp]) ,reference )	
+								else:
+									name    = reple.sub(  str(dataset['outputs'][outp]) ,name )	
+									units   = reple.sub(  str(dataset['outputs'][outp]) , units)	
+									command = reple.sub(  str(dataset['outputs'][outp]) , command )	
+									if not refIsValue:
+										reference = reple.sub(  str(dataset['outputs'][outp]) ,reference )	
+					
+						# Now replace other variables from the dataset...
+						for tagp in  dataset.keys():
+							if tagp == 'numprocs':
+								reple = re.compile( "%NUMPROCS%" )
+								command = reple.sub( cpus , command)
+								if not refIsValue:
+									reference = reple.sub( cpus , reference)
+							else:	
+								# '%TOOLS%' does need ot be replaced since it was already done in __substituteVarsForAnalysis
+								if not tagp in ['outputs','metrics','tools','common'] and not isinstance(dataset[tagp],dict):
+									if not re.match( "#\d+#",tagp  ):
+										reple = re.compile( "%"+str(tagp).upper()+"%" )
+										if dataset.keys().count( "#"+cpus+"#"+tagp) != 0:
+											toSubst = str(dataset["#"+cpus+"#"+tagp])	
+											name    = reple.sub( toSubst , name    )	
+											units   = reple.sub( toSubst , units   )	
+											command = reple.sub( toSubst , command )	
+											if not refIsValue:
+												reference = reple.sub( toSubst , reference)
+										else:
+											toSubst = str(dataset[tagp])	
+											name    = reple.sub( toSubst , name )	
+											units   = reple.sub( toSubst , units )	
+											command = reple.sub( toSubst , command)	
+											if not refIsValue:
+												reference = reple.sub( toSubst , reference)
+						
+						# Now compute this metric for this run 
+						command_value = syscall(command)[0].strip()
+						ref_value = reference if refIsValue else syscall(reference)[0].strip()
+						if len(ref_value) != 0:
+							try:
+								accuracy = abs( ( float(command_value) - float(ref_value)  )/float(ref_value) * 100)
+								if type.lower() == 'bilateral':
+									validation = "Failed" if threshold<accuracy else "Passed"						
+								elif type.lower() == 'greater':	
+									validation = "Passed" if threshold>accuracy and ref_value<command_value else "Failed"						
+								elif type.lower() == 'lower':	
+									validation = "Passed" if threshold>accuracy and ref_value>command_value else "Failed"						
+								o.write( "\"" + name + "\"," + "\"" + command_value +"\"," +"\"" + units + "\",\"" +  ref_value + "\",\"" + str(accuracy)  + "\",\"" + validation + "\"\n"  ) 
+							except:
+								continue	
+						else:
+							o.write( "\"" + name + "\"," + "\"" + command_value +"\"," +"\"" + units + "\"\n"  ) 
+						
+						radio.append ( command_value )				
+						ref_value_a.append(ref_value)
+						metrics.append( name )
+						if len(units)!=0:
+							units_a.append(units)
+						else:
+							units_a.append('Unknown')
+
+				# Finished proceesing the metrics. Close the csv file and prepare the raw file
 				o.flush()
 				o.close
 				
-				sort_dict = zip(metrics, theta, radio, ref_value_a)		
-				r = open( "analysis.raw","w")
+				sort_dict = zip(metrics, units_a ,theta, radio, ref_value_a)		
 				for k in sort_dict:
-					r.write( str(k[0]) + "  "  + str(k[1]) + "  "  + str(k[2]) + "  " + timestamp  + "  " + str(k[3]) + "\n"  )
-				
-				r.write( str(sort_dict[0][0])	 + "  "  + str(sort_dict[0][1]) + "  "  + str(sort_dict[0][2]) + "  " + timestamp   + "  " + str(sort_dict[0][3])  + "\n"  )
+					r.write( str(k[0]) + "  " + str(k[1])  + "  "  + str(k[2]) + "  "  + str(k[3]) + "  " + timestamp  + "  " + str(k[4]) + "\n"  )
+			
+				r.write( str(sort_dict[0][0]) + "  " + str(sort_dict[0][1]) + "  "  + str(sort_dict[0][2]) + "  "  + str(sort_dict[0][3]) + "  " + timestamp   + "  " + str(sort_dict[0][4])  + "\n"  )
 				r.flush
 				r.close		
+				
+				os.chdir("../..")				
+
 
 #####################################################################                                           
 #
@@ -1076,9 +1085,11 @@ set style fill solid 0.4
 					n = str( int(( float(p)/float(dataset['tasks_per_node'])))  )	
 				else:
 					n = str( int(round(float(p)/float(dataset['tasks_per_node'])+0.5))  )			
-				run_id = dataset['name'] + "_" + p + "cpus_" + n + "nodes_"  + str(newname)					
+				#run_id = dataset['name'] + "_" + p + "cpus_" + n + "nodes_"  + str(newname)					
+				run_id =  p + "cpus_" + n + "nodes/"  + str(newname)					
 			else:
-				run_id = dataset['name'] + "_" + p + "cpus_"  + str(newname)
+				#run_id = dataset['name'] + "_" + p + "cpus_"  + str(newname)
+				run_id =  p + "cpus/"  + str(newname)
 			
 			print "Run ID: " + self.log.bold( run_id) , 
 	
@@ -1097,12 +1108,14 @@ set style fill solid 0.4
 						n = str( int(( float(p)/float(dataset['tasks_per_node'])))  )	
 					else:
 						n = str( int(round(float(p)/float(dataset['tasks_per_node'])+0.5))  )								
-					run_id = dataset['name'] + "_" + p + "cpus_" + n + "nodes_"  + str(newname)					
+					#run_id = dataset['name'] + "_" + p + "cpus_" + n + "nodes_"  + str(newname)					
+					run_id = p + "cpus_" + n + "nodes/"  + str(newname)					
 				else:
-					run_id = dataset['name'] + "_" + p + "cpus_"  + str(newname)
+					#run_id = dataset['name'] + "_" + p + "cpus_"  + str(newname)
+					run_id =  p + "cpus/"  + str(newname)
 			
 			shutil.copytree(  dataset['name'] , run_id )		
-	
+
 			# get the script or the command to run it
 			data = self.__getBatchScript(dataset,p.strip()) 
 			
@@ -1202,10 +1215,14 @@ set style fill solid 0.4
 					self.log.plain(err)
 					failed = True
 													
-			os.chdir("..")	
+			#os.chdir("..")	
+			os.chdir(t)	
 			if failed:
 				# mark directory as failed
-				shutil.move( run_id , "FAILED_"+run_id )
+				os.chdir(run_id)
+				os.chdir("..")
+				shutil.move( newname , "FAILED_"+newname )
+				os.chdir(t)	
 
 
 #####################################################################                                           
@@ -1906,26 +1923,57 @@ set style fill solid 0.4
 		dataset = [ w+'/'+d for w in what for d in  os.listdir(self.runs_dir+'/' + w) if not re.match('\\.',d) and os.path.isdir(self.runs_dir + "/" +w+"/"+d)  ]
 	
 		dateexp = re.compile("\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d")		
-
+		
 		self.log.plain("***********************************************")	
 		self.log.plain( "Removing old runs according to current policy of " + self.log.bold(str(self.runs_lifespan)) + " days"  )
 		toRemove=[]
 		for d in dataset:
 			current = self.runs_dir + "/" + d
-			for e in os.listdir(current):
-				mobj = dateexp.search(e)
-				if mobj:
-					fecha = datetime.datetime.strptime( mobj.group(0) , '%Y-%m-%dT%H:%M:%S')	
-					now = datetime.datetime.now()
-					if  (now - fecha) > datetime.timedelta (days = self.runs_lifespan ):
-						toRemove.append( current + '/' + e )
+			if os.path.isdir(current):
+				for ud in os.listdir(current):
+					for e in os.listdir(current +'/' + ud): 
+						mobj = dateexp.search(e)
+						if mobj:
+							fecha = datetime.datetime.strptime( mobj.group(0) , '%Y-%m-%dT%H:%M:%S')	
+							now = datetime.datetime.now()
+							if  (now - fecha) > datetime.timedelta (days = self.runs_lifespan ):
+								toRemove.append( current + '/' + ud + '/' + e )
+					if len(os.listdir(current +'/' + ud))==0:
+						toRemove.append( current + '/' + ud) 
+		elemsremoved = 0
 		for e in toRemove:
-			clean(e,True)
-			self.log.warning( e)
-		self.log.plain( self.log.bold(str(len(toRemove))) + " elements removed")
+			if os.path.isdir(e):	
+				clean(e,True)
+				self.log.warning( e)
+				elemsremoved=elemsremoved+1	
+				
+		self.log.plain( self.log.bold(str(elemsremoved)) + " elements removed")
 		self.log.plain("***********************************************")	
 								
-		
+def cb(option, opt_str, value, parser):
+     assert value is None
+     value = []
+
+     def floatable(str):
+         try:
+             float(str)
+             return True
+         except ValueError:
+             return False
+
+     for arg in parser.rargs:
+         # stop on --foo like options
+         if arg[:2] == "--" and len(arg) > 2:
+             break
+         # stop on -a, but not on -3 or -3.0
+         if arg[:1] == "-" and len(arg) > 1 and not floatable(arg):
+             break
+         value.append(arg)
+
+     del parser.rargs[:len(value)]
+     setattr(parser.values, option.dest, value)
+
+	
 #####################################################################                                           
 #
 #	Main Program entry point
@@ -1941,9 +1989,10 @@ if __name__ == "__main__":
 	parser.add_option("-c", "--configuration" ,action="store_true", help="Show the benchmark global configuration or a specific item configuration according to the 'Selectors' below ", default=False,dest='c')	
 	parser.add_option("-p", "--postprocess",action="store_true", help="Perform the Postprocess/Analysis stage for the whole benchmark or for a specific item according to the 'Selectors' below .", default=False,dest='p')	
 	parser.add_option("-y", "--yaml",action="store", help="Use the specified yaml configuration file rather than the default one", dest='y')	
-	parser.add_option("-k", "", nargs=2 ,action="store" , help="Displays the kiviat diagram for the specified analysis dir. The first argument is the path to the reference directory and the second argument is a path to another directory which might contain multiple dirs. If any of these dirs contain a valid analysis data, they will be used to compared against the reference dir specified in the first argument" , dest='k')	
-	parser.add_option("-t", "", nargs=1 ,action="store" , help="Displays the time evolution of the metrics for the specified analysis dir." , dest='t')	
-
+	parser.add_option("-k", "--kiviat", nargs=2 ,action="store" , help="Displays the kiviat diagram for the specified analysis dir. The first argument is the path to the reference directory and the second argument is a path to another directory which might contain multiple dirs. If any of these dirs contain a valid analysis data, they will be used to compared against the reference dir specified in the first argument" , dest='k')	
+	#parser.add_option("-t", "--time",   nargs=2 ,action="store" , help="Displays the time evolution of the metrics for the specified analysis dir." , dest='t')	
+	#parser.add_option("-t", "--time",   action="store_true" , help="Displays the time evolution of the metrics for the specified analysis." , default=False , dest='t')	
+	parser.add_option("-t", "--time",action="callback", callback=cb, dest='t',  help="Displays the time evolution of the metrics for the specified analysis dir.")
 		
 	groupRun = optparse.OptionGroup(parser, "Selectors")
 	groupRun.add_option("-a", action="store", help="Select a specific application benchmark" , dest='a')
@@ -2055,7 +2104,10 @@ if __name__ == "__main__":
  		kube.kiviat(itemname[0],itemname[1])
  		
  	elif option == "t":
- 		kube.timeAnalysis(itemname)	
+ 		if len(itemname) > 1:
+			kube.timeAnalysis(itemname[0], itemname[1:])	
+		else:
+			kube.timeAnalysis(itemname[0])
  		
  	else:
  		assert False, "unhandled option"

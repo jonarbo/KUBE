@@ -54,7 +54,7 @@ KUBE:
                 command: cat %OUTPUT% |  grep  ENERGY | gawk 'END{print $12}'   
                 tolerance:
                         threshold: 0.001
-                        type: bilateral
+                        type: bilateral  # could be also 'greater' and 'lower'
                         reference: cat %OUTREF% |  grep  ENERGY | gawk 'END{print $12}'
               - name: wallclock
                 units: secs
@@ -64,7 +64,7 @@ KUBE:
                 command: cat %OUTPUT% | grep  Benchmark | gawk 'END{print $8}' 
                 tolerance:      # Used to check if this metric is within the accepted threshold compared with the ref value 
                         threshold: 0.001     # expressed in % ... Also allowed 'Inf'  
-                        type: bilateral # could be also 'greater' and 'lower'   
+                        type: lower     
                         #reference: cat %OUTREF% | grep  Benchmark | gawk 'END{print $8}' 
                         #reference:  /%TOOLS%/printTolerance.sh %OUTPUT% %OUTREF%
                         #reference:  cat %ANOTHER_OUTPUT%  %OUTREF% | egrep "ENERGY:\s+500" | gawk 'BEGIN{diff=0}{diff=$3-diff}END{print diff}'  # a value is allowed as well  
