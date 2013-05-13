@@ -773,6 +773,10 @@ set format y '%f'
 			
 				# output data copied for this run
 				
+				# only continue if available metrics ... 
+				if dataset.keys().count('metrics') == 0:	
+					continue
+
 				# now crate a .csv and the .raw file suitable to be used later on with gnuplot...
 				o = open( rd +"/"+i + "/analysis.csv","w")
 				r = open( rd +"/"+i + "/analysis.raw","w")

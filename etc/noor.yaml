@@ -42,9 +42,24 @@ KUBE:
    BENCH: 
       APPS:
          - name: mpiblast
-           active: false
+           active: true 
            batch: LSF 
-              
+           exe: mpiblast 
+           modules: module load gcc mpi-openmpi mpiblast
+           datasets:
+                - name: pkg 
+                  active: true
+                  numprocs: 8 
+                  args: -p blastn -d yeast.nt -i query.txt -o mpiblastresult.txt 
+                  outputs:
+                        outputtxt: mpiblastresult.txt
+                  metrics:
+                        - name: sequences
+                          units: number
+                          command: cat %OUTPUTTXT% | grep -A1 Database | grep sequences |  gawk '{print $1}' 
+                        - name: total_letters
+                          units: number
+                          command: cat %OUTPUTTXT% | grep -A1 Database | grep sequences |  gawk '{print $3}' | sed 's/,//g'
          - name: namd
            active: true
            batch: LSF     
