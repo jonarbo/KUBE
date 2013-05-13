@@ -353,8 +353,8 @@ set grid polar
 			sys.exit(1)
 			
  		metrics = []
- 		print metric_names
  		# set the legend from the run name:
+		target = os.path.abspath(target)	
 		title_run = os.path.basename(target)
 		title_dataset=''
 		if len(title_run)==0:
@@ -364,7 +364,7 @@ set grid polar
 			title_dataset = os.path.dirname(target)
 		title_bench =  os.path.basename( os.path.dirname( title_dataset  ))	
 		title_dataset = os.path.basename(title_dataset)
-	
+				
 
 		print "Reading data from "+ self.log.bold(target) 
 
@@ -390,7 +390,7 @@ set grid polar
 					line = ofc.split()
 					if metric_names==None or ( metric_names!=None and line[0] in metric_names ): 
 						if len(line)>5:
-							metrics[len(metrics)-1][line[0]] = ( line[3],line[4],line[1],line[5] ) 
+							metrics[len(metrics)-1][line[0]] = ( line[3],line[4],line[1],line[5],line[6],line[7] ) 
 						else:
 							metrics[len(metrics)-1][line[0]] = ( line[3],line[4],line[1] ) 
 					ofc = tf.readline()
@@ -413,7 +413,9 @@ set grid polar
 				if ofname.keys().count(name) == 0:
 					ofname[name] =[ open( name + ".raw", 'w'),'' ] 
 				if len(m[name])>3:
-					ofname[name][0].write( m[name][1] + ' ' + m[name][0] + ' ' + m[name][3]  +  '\n' )
+					v_4 = m[name][4]
+					v_5 = m[name][5]
+					ofname[name][0].write( m[name][1] + ' ' + m[name][0] + ' ' + m[name][3] + ' ' + v_4  + ' ' + v_5 +  '\n' )
 				else:
 					ofname[name][0].write( m[name][1] + ' ' + m[name][0] +  '\n' )
 				ofname[name][1] =  m[name][2]
@@ -445,39 +447,49 @@ set grid polar
 		kf = open(gnuplotfile,'w')
 		kf.write(
 		"""
-#set clip points
+set clip points
 unset border
 set xtics axis 
 set ytics axis 
 set grid
 set style fill solid 0.4
+#set term qt persist size 1280,640 title 'KUBE'   font 'sans'
+set term x11 persist title 'KUBE'  font 'sans'
+set format y '%f'	
 """)
 		if len(ofname.keys()) >1:	
+			for key in ofname.keys():		
+				# dummy plot to get the range...
+				kf.write( "plot '"+ key +".raw' u  1:3:xtic(2), ''  u 1:4 \nymax_" + key +  "=GPVAL_Y_MAX\nymin_" + key  +  "=GPVAL_Y_MIN\n")					
+				
 			kf.write("set key off\n")
-			kf.write("set multiplot layout " + str(nplotsx) + "," + str(nplotsy) + " title \"Benchmark:" +title_bench + " , Dataset:"+ title_dataset+  " , Run:" + title_run + "\"\n")
+			kf.write("set multiplot layout " + str(nplotsx) + "," + str(nplotsy) + " title \"Benchmark:" + title_bench + " , Dataset:"+ title_dataset+  " , Run:" + title_run + "\"\n")
 			kf.write( "set mouse zoomjump\n")
 			splotstr = " "
 			for key in ofname.keys():		
-				splotstr = splotstr + "set title \'"+ key + "\' font \'Bold\'\n"
+				splotstr = splotstr + "set title \'"+ key + "\'\n"  # "\' font \'Bold\'\n"
 				splotstr = splotstr + "set ylabel \'"+ ofname[key][1]  +"\'\n" 
-				splotstr = splotstr + "plot '" + key+ ".raw' using 1:3:xtic(2) with linespoint  lc rgb variable lw  2" +  ", '" + key+ ".raw' using 1:4:xtic(2) with linespoint title 'reference'\n" 
-	
+		 		# now the plot
+				splotstr = splotstr + "plot '" + key + ".raw' using  1:3:xtic(2) with linespoint lt rgb \"blue\"  lw 2 title \"" + key + "\", '' u 1:($5!='inf'?($5!='-inf'?$5:ymin_"+key+"):ymax_"+key+") with linespoint lw 2 lt rgb \'red\' notitle , '' u 1:($6!='inf'?($6!='-inf'?$6:ymin_"+key+"):ymax_"+key+") with linespoint notitle lw 2 lt rgb \'red\',''  u 1:4 title 'reference' with linespoint lw 2 lt rgb \'green\'\n" 
+
 			kf.write( splotstr )
 			kf.write( "\nunset multiplot\n")
 		else:	
 			key = ofname.keys()[0]
 			kf.write("set title \"Benchmark:" +title_bench + " , Dataset:"+ title_dataset+  " , Run:" + title_run + "\"\n")
-			#kf.write("plot '" + key +".raw' using 1:3:xtic(2) with linespoint  lc rgb variable lw 3  title \"" + key + "\"\n")
-			kf.write( "plot '" + key+ ".raw' using 1:3:xtic(2) with linespoint  lw 2 title \"" + key  + '\"'  +  ",'" + key+ ".raw' using 1:4:xtic(2) with linespoint title 'reference'\n" )
+			# dummy plot to get the range...
+			kf.write( "plot '"+ key +".raw' u  1:3:xtic(2) , ''  u 1:4 \nymax=GPVAL_Y_MAX\nymin=GPVAL_Y_MIN\n")				
+	 		# now the plot
+			kf.write( "plot '" + key+ ".raw' using 1:3:xtic(2) with linespoint lt rgb \"blue\"  lw 2 title \"" + key + "\", '' u 1:($5!='inf'?($5!='-inf'?$5:ymin):ymax):($6!='inf'?($6!='-inf'?$6:ymin):ymax) with filledcu fs transparent pattern 4 lt rgb \"green\"  notitle  ,'' u 1:($5!='inf'?($5!='-inf'?$5:ymin):ymax) with linespoint lw 2 lt rgb \'red\' notitle , '' u 1:($6!='inf'?($6!='-inf'?$6:ymin):ymax) with linespoint notitle lw 2 lt rgb \'red\',''  u 1:4 title 'reference' with linespoint lw 2 lt rgb \'green\'\n" )
 			# this would allow to make zoom the the window but for some reason, when the window is closed the process still waits for something from the system and hangs..
-			#kf.write("pause -1\n")
+			kf.write("pause -1\n")
 		
 			
 		kf.flush()
 		kf.close()
 			
 		# and call it
-		print syscall ( "gnuplot -persist " + gnuplotfile )[1]
+		print syscall ( "gnuplot " + gnuplotfile )[1]
 
 #####################################################################                                           
 #
@@ -696,14 +708,15 @@ set style fill solid 0.4
 										out,err = syscall( ncmd )	
 										if out.strip()==jobid.strip():
 											# the job is running ... remove it from the list
+											self.log.plain("Skipping running job: " + self.log.bold(rundir + "/" + k + "/" + r) )
 											allruns[k].remove(r)
 											repeat = True										
 										break		
 		u = allruns
-		print u			
 		if len(u) == 0:
 			self.log.plain("No new runs to analyze")	
 			return
+
 		# create analysis dir for each  run
 		START = 0.0
 		END = 2*math.pi
@@ -770,6 +783,8 @@ set style fill solid 0.4
 				metrics = []
 				ref_value_a = []
 				units_a = []
+				threshold_a_u=[]
+				threshold_a_l=[]
 				os.chdir(rd + "/" + i)				
 
 				# Now make the replacements and prepare commands ...
@@ -806,7 +821,6 @@ set style fill solid 0.4
 							except:
 								self.log.warning( "Skipping metric \'"+ name + "\' in dataset: \'" + dataset['name']  + "\' Please check out the config params for this metric." )
 								continue
-
 
 						# replace references to the output section						
 						for outp in  dataset['outputs'].keys():
@@ -857,18 +871,27 @@ set style fill solid 0.4
 						ref_value = reference if refIsValue else syscall(reference)[0].strip()
 						if len(ref_value) != 0:
 							try:
-								accuracy = abs( ( float(command_value) - float(ref_value)  )/float(ref_value) * 100)
+								accuracy = abs( ( float(command_value) - float(ref_value)  )/float(ref_value)) * 100
+								threshold_v = abs(float(ref_value)*(threshold/100))						
 								if type.lower() == 'bilateral':
-									validation = "Failed" if threshold<accuracy else "Passed"						
+									validation = "Failed" if threshold<accuracy else "Passed"	
+									threshold_a_u.append(float(ref_value)+threshold_v)
+									threshold_a_l.append(float(ref_value)-threshold_v)
 								elif type.lower() == 'greater':	
 									validation = "Passed" if threshold>accuracy and ref_value<command_value else "Failed"						
+									threshold_a_u.append(float(ref_value)+threshold_v)
+									threshold_a_l.append(float(ref_value))
 								elif type.lower() == 'lower':	
 									validation = "Passed" if threshold>accuracy and ref_value>command_value else "Failed"						
+									threshold_a_l.append(float(ref_value)-threshold_v)
+									threshold_a_u.append(float(ref_value))
 								o.write( "\"" + name + "\"," + "\"" + command_value +"\"," +"\"" + units + "\",\"" +  ref_value + "\",\"" + str(accuracy)  + "\",\"" + validation + "\"\n"  ) 
 							except:
 								continue	
 						else:
 							o.write( "\"" + name + "\"," + "\"" + command_value +"\"," +"\"" + units + "\"\n"  ) 
+							threshold_a_l.append('')
+							threshold_a_u.append('')
 						
 						radio.append ( command_value )				
 						ref_value_a.append(ref_value)
@@ -883,10 +906,11 @@ set style fill solid 0.4
 				o.close
 				
 				sort_dict = zip(metrics, units_a ,theta, radio, ref_value_a)		
+				sort_dict = zip(metrics, units_a ,theta, radio, ref_value_a, threshold_a_u, threshold_a_l )		
 				for k in sort_dict:
-					r.write( str(k[0]) + "  " + str(k[1])  + "  "  + str(k[2]) + "  "  + str(k[3]) + "  " + timestamp  + "  " + str(k[4]) + "\n"  )
+					r.write( str(k[0]) + "  " + str(k[1])  + "  "  + str(k[2]) + "  "  + str(k[3]) + "  " + timestamp  + "  " + str(k[4]) + "  " + str(k[5]) + "  " + str(k[6]) + "\n"  )
 			
-				r.write( str(sort_dict[0][0]) + "  " + str(sort_dict[0][1]) + "  "  + str(sort_dict[0][2]) + "  "  + str(sort_dict[0][3]) + "  " + timestamp   + "  " + str(sort_dict[0][4])  + "\n"  )
+				r.write( str(sort_dict[0][0]) + "  " + str(sort_dict[0][1]) + "  "  + str(sort_dict[0][2]) + "  "  + str(sort_dict[0][3]) + "  " + timestamp   + "  " + str(sort_dict[0][4]) + "  " + str(sort_dict[0][5]) + "  " + str(sort_dict[0][6]) + "\n"  )
 				r.flush
 				r.close		
 				
