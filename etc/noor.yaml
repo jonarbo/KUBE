@@ -26,7 +26,7 @@ KUBE:
           tasks_per_node: 8           
           queue: rh6_q20m                             
           launcher: mpirun 
-          launcher_flags:    
+          launcher_flags: ' '     
           #mpiflags: -a openmpi
           wallclock: 20       
                 
@@ -47,9 +47,9 @@ KUBE:
            exe: mpiblast 
            modules: module load gcc mpi-openmpi mpiblast
            datasets:
-                - name: pkg 
+                - name: yeast 
                   active: true
-                  numprocs: 8 
+                  numprocs: 4,6,8
                   args: -p blastn -d yeast.nt -i query.txt -o mpiblastresult.txt 
                   outputs:
                         outputtxt: mpiblastresult.txt
@@ -71,23 +71,22 @@ KUBE:
               - name: total_energy
                 units: joules
                 command: cat %OUTPUT% |  grep  ENERGY | gawk 'END{print $12}'   
-                tolerance:
+                reference:
+                        value: cat %OUTREF% |  grep  ENERGY | gawk 'END{print $12}'
+                        tolerance: bilateral  
                         threshold: 0.000001
-                        type: bilateral  # could be also 'greater' and 'lower'
-                        reference: cat %OUTREF% |  grep  ENERGY | gawk 'END{print $12}'
+                        threshold_type: percentage        
               - name: wallclock
                 units: secs
                 command: cat %OUTPUT% | grep WallClock | gawk '{print $2}'                
               - name: days_per_ns
                 units: days/ns
                 command: cat %OUTPUT% | grep  Benchmark | gawk 'END{print $8}' 
-                tolerance:      # Used to check if this metric is within the accepted threshold compared with the ref value 
-                        #reference: cat %OUTREF% | grep  Benchmark | gawk 'END{print $8}' 
-                        #reference:  /%TOOLS%/printTolerance.sh %OUTPUT% %OUTREF%
-                        #reference:  cat %ANOTHER_OUTPUT%  %OUTREF% | egrep "ENERGY:\s+500" | gawk 'BEGIN{diff=0}{diff=$3-diff}END{print diff}'  # a value is allowed as well  
-                        reference: cat %OUTREF% | grep  Benchmark | gawk 'END{print $8}'       
-                        type: greater    
-                        threshold: inf     # expressed in % ... Also allowed 'Inf'  
+                reference:                                      # Used to check if this metric is within the accepted threshold compared with the ref value
+                        value: cat %OUTREF% | grep  Benchmark | gawk 'END{print $8}'  # Number or expression
+                        tolerance: above                                              # above/below/bilateral       
+                        threshold: inf                                                # Number or "Inf"      
+                        threshold_type:  absolute                                     # absoulte/percentage
               - name: cputime
                 units: secs
                 command: cat %OUTPUT% | grep CPUTime | gawk '{print $4}'                     
@@ -97,16 +96,13 @@ KUBE:
               - name: prueba
                 units: Julios
                 command:  /%COMMON%/printCommonTolerance.sh %OUTPUT% %OUTREF%
-              #- name: prueba2
-              #  units: ninguna
-              #  command: cat %ANOTHER_OUTPUT%               
 
            # here goes the specific dataset configuration
            datasets: 
               - name: namd_nucleosome146Katoms
-                active: false
+                active: true
                 args: nucleosome146Katoms.namd  > nucleosome.out  2>nucleosome.err
-                outputs: 
+                outputs:  
                    output: nucleosome.out                      
                    outref: nucleosome.ref
                    another_output: KUBE_%NAME%_%NUMPROCS%.out          

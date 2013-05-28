@@ -600,12 +600,12 @@ set format y '%f'
 		analysisd = self.analysis_dir + "/apps/"+ name + "/"
 		runsd = self.runs_dir + "/apps/"+ name + "/"
 		if not os.path.exists(runsd):
-			self.log.warning("Can't find any completed run for this app: " + self.log.bold(name) )
-			return
+			self.log.warning("There is no run for this app: " + self.log.bold(name) )
+			#return
 			#sys.exit(1)
 		if not os.path.exists(analysisd):
 			os.makedirs(analysisd)
-
+		
 		for dataset in app:
 			self.__analyzeDataset(dataset,runsd,analysisd)			
 
@@ -615,8 +615,8 @@ set format y '%f'
 		analysisd = self.analysis_dir + "/synthetics/"+ name + "/"
 		runsd = self.runs_dir + "/synthetics/"+ name + "/"
 		if not os.path.exists(runsd):
-			self.log.warning("Can't find any completed run for this synthetic: " + self.log.bold(name) )
-			return
+			self.log.warning("There is no run for this synthetic: " + self.log.bold(name) )
+			#return
 			#sys.exit(1)
 		if not os.path.exists(analysisd):
 			os.makedirs(analysisd)
@@ -630,8 +630,8 @@ set format y '%f'
 		analysisd = self.analysis_dir + "/filesystems/"+ name + "/"
 		runsd = self.udir + "/runs/filesystems/"+ name + "/"
 		if not os.path.exists(runsd):
-			self.log.warning("Can't find any completed run for this filesystem: " + self.log.bold(name) )
-			return
+			self.log.warning("There is no run for this filesystem: " + self.log.bold(name) )
+			#return
 			#sys.exit(1)
 		if not os.path.exists(analysisd):
 			os.makedirs(analysisd)
@@ -646,8 +646,8 @@ set format y '%f'
 		analysisd = self.analysis_dir + "/networks/"+ name + "/"
 		runsd = self.runs_dir + "/networks/"+ name + "/"
 		if not os.path.exists(runsd):
-			self.log.warning("Can't find any completed run for this network: " + self.log.bold(name) )
-			return
+			self.log.warning("There is no run for this network: " + self.log.bold(name) )
+			#return
 			#sys.exit(1)
 		if not os.path.exists(analysisd):
 			os.makedirs(analysisd)
@@ -656,38 +656,44 @@ set format y '%f'
 			self.__analyzeDataset(dataset,runsd,analysisd)		
 
 	def __analyzeDataset(self,dataset,runsd,analysisd):
+		import yaml
+		import hashlib
+
 		rundir = runsd + dataset['name']	
+		allruns={}
 		analysisdir = analysisd +dataset['name']
+		allanalysis = {}
+		
+		# 'digest' contains the global config settings md5 sum that affects this particular dataset
+		m = hashlib.md5()		
+		m.update( yaml.dump(dataset,default_flow_style=False) )
+		digest = m.hexdigest()
+		# name of the file that contains the digest
+		digestFile = analysisdir+'/.'+dataset['name']+'.md5'
+
+		# if analysis dir does not exists, create it, otherwise get the list of dirs to analyze
 		if not os.path.exists(analysisdir):
 			os.makedirs(analysisdir)
+		else:
+			for r in os.listdir(analysisdir):
+				if os.path.isdir(analysisdir+'/'+r):
+					allanalysis[r] = os.listdir(analysisdir+'/'+r)	
+						
+		print "Processing \'" + dataset['name'] + "\'",	
 		# Analyze every run which is not already been analyzed
-		# runs = os.listdir(rundir)
-		allruns = dict( [ [r,os.listdir(rundir+'/'+r)] for r in os.listdir(rundir)])	
-		# now remove the known failure dirs
-		repeat = True
-		while repeat and len(allruns.keys())!=0:
-			for k in allruns.keys():
-				repeat = False
-				for r in allruns[k]:
-					if re.match("FAILED_",r) !=	None:
-						allruns[k].remove(r)		
-						repeat = True
-						break		
+		if os.path.exists(rundir):
+			allruns = dict( [ [r,os.listdir(rundir+'/'+r)] for r in os.listdir(rundir)])	
+			# now remove the known failure dirs
+			repeat = True
+			while repeat and len(allruns.keys())!=0:
+				for k in allruns.keys():
+					repeat = False
+					for r in allruns[k]:
+						if re.match("FAILED_",r) !=	None:
+							allruns[k].remove(r)		
+							repeat = True
+							break		
 
-		# This code eliminates the need to re-analyze  an already analyzed run ...
-		# But I commented this because it could be useful to re-analyze a run because the user
-		# might have changed the metrics configuration ... for example  			
-# 		canalysis =  os.listdir(analysisdir)		
-# 		if  len(canalysis)!=0:
-# 			for a in canalysis:
-# 				for r in runs:
-# 					if r==a:
-# 						# Found the same dataset in the analysis dir...
-# 						# if it is not empty we will assume the analysis phase has been done
-# 						if len(os.listdir( analysisdir+'/'+a ))!=0:
-# 							runs.remove(r)
-# 							break
-							
 		# now remove from the list the runs that are still running ...
 		batch = self.__getBatchSystem(dataset)
 		if batch != None:
@@ -713,15 +719,36 @@ set format y '%f'
 											repeat = True										
 										break		
 		u = allruns
+		a = allanalysis
+	
+		# Add to the new runs list, the dirs already analyzed ... They will only be processed if they have changed in the config
+		u.update(a)
+		
 		if len(u) == 0:
-			self.log.plain("No new runs to analyze")	
-			return
+			self.log.plain(" ==> Nothing to analyze")	
+			#return
+		else:
+			print 
+		
+		configChanged = True
+		# if file already exists ... Check if 
+		# the config specifics for this dataset  
+		# changed, this will avoid re-processing alreay existing data 
+		if  os.path.isfile( digestFile  ) :
+			# if digest file exists, read it and compare signatures.
+			mydigest = file( digestFile, 'r' ).read()	
+			if mydigest == digest:
+				configChanged=False
+			else:
+ 				file( digestFile, 'w' ).write(str(digest))
+		else:
+			# if digest file is not there, create it and assume this dataset needs to be analyzed.
+ 			file( digestFile, 'w' ).write(str(digest))
 
-		# create analysis dir for each  run
+		# Do the analysis ...
 		START = 0.0
 		END = 2*math.pi
 		for rd in u:
-			
 			#get the cpus from the run name:
 			str2find = "(\d+)cpus_"	
 			reple = re.compile( str2find )
@@ -729,50 +756,54 @@ set format y '%f'
 			cpus = mobj.group(1)
 			
 			for i in u[rd]:
-				os.chdir( analysisdir )
-				if not os.path.exists(rd+"/"+i):
-					os.makedirs(rd+"/"+i)
-			
 				timestamp = i
+				# change to analysis dir
+				os.chdir( analysisdir )
+				# create analysis dir for each  run
+				if not os.path.exists(rd+"/"+i):
+					# if not exists, create it and copy the necessary files ... 
+					os.makedirs(rd+"/"+i)
 
-				# Copy the outputs needed ...
-				for outp in  dataset['outputs'].keys():
-					failed = False
-					mobj = re.match("#(\d+)#", outp)
-					if mobj:
-						# the output key contains a reference to the number of cpus used ...
-						# this is it because we may have some different outputs' name 
-						# related to the number of cpus used.	
-						if mobj.group(1) == cpus:
-							if os.path.isfile(rundir + "/" + rd + "/" + i + "/" + dataset['outputs'][outp]) :					
-								shutil.copy( rundir + "/" + rd + "/" + i + "/" + dataset['outputs'][outp] , rd+"/"+i+"/")
-							else:
-								self.log.waring("Warning","File " + self.log.bold( rundir + "/" + rd + "/" + i + "/" + str(dataset['outputs'][outp]) ) + " Does not exist.")
-								self.log.error("Analysis not completed!!!")
-								failed = True
-								break
-					else:
-						# Now be sure to skip the key that originated the cpu dependency ...
-						skip = False
-						for again_outp in  dataset['outputs'].keys():				
-							if re.match("#"+cpus+"#"+outp , again_outp):
-								skip = True
-								break								
-						if not skip:
-							if os.path.isfile(rundir + "/" + rd + "/" + i + "/" + dataset['outputs'][outp]) :					
-								shutil.copy( rundir + "/" + rd + "/" + i + "/" + dataset['outputs'][outp] , rd + "/"+ i +"/")
-							else:
-								self.log.warning("Warning","File " + self.log.bold( rundir + "/" + rd + "/" + i + "/" + str(dataset['outputs'][outp]) ) + " Does not exist.")
-								self.log.error("Analysis not completed!!!")
-								failed = True
-								break		
-				
-					if failed == True:
+					# Copy the outputs needed ...
+					for outp in  dataset['outputs'].keys():
+						failed = False
+						mobj = re.match("#(\d+)#", outp)
+						if mobj:
+							# the output key contains a reference to the number of cpus used ...
+							# this is it because we may have some different outputs' name 
+							# related to the number of cpus used.	
+							if mobj.group(1) == cpus:
+								if os.path.isfile(rundir + "/" + rd + "/" + i + "/" + dataset['outputs'][outp]) :					
+									shutil.copy( rundir + "/" + rd + "/" + i + "/" + dataset['outputs'][outp] , rd+"/"+i+"/")
+								else:
+									self.log.waring("Warning","File " + self.log.bold( rundir + "/" + rd + "/" + i + "/" + str(dataset['outputs'][outp]) ) + " Does not exist.")
+									self.log.error("Analysis not completed!!!")
+									failed = True
+									break
+						else:
+							# Now be sure to skip the key that originated the cpu dependency ...
+							skip = False
+							for again_outp in  dataset['outputs'].keys():				
+								if re.match("#"+cpus+"#"+outp , again_outp):
+									skip = True
+									break								
+							if not skip:
+								if os.path.isfile(rundir + "/" + rd + "/" + i + "/" + dataset['outputs'][outp]) :					
+									shutil.copy( rundir + "/" + rd + "/" + i + "/" + dataset['outputs'][outp] , rd + "/"+ i +"/")
+								else:
+									self.log.warning("Warning","File " + self.log.bold( rundir + "/" + rd + "/" + i + "/" + str(dataset['outputs'][outp]) ) + " Does not exist.")
+									self.log.error("Analysis not completed!!!")
+									failed = True
+									break		
+					
+						if failed == True:
+							continue
+					# output data copied for this run
+					# always analyze this run 
+				else:
+					if not configChanged:	
 						continue
 
-			
-				# output data copied for this run
-				
 				# only continue if available metrics ... 
 				if dataset.keys().count('metrics') == 0:	
 					continue
@@ -805,17 +836,19 @@ set format y '%f'
 						accuracy   = ""
 						validation = ""
 						threshold  = ""
-						type 	   = ""
+						threshold_type = ""
+						tolerance  = ""
 						ref_value  = ""
 						refIsValue = True
 				
-						if metric.keys().count('tolerance') != 0:
-							if not (metric['tolerance'].keys().count('threshold') != 0 and  metric['tolerance'].keys().count('type') != 0 and metric['tolerance'].keys().count('reference') != 0):
+						if metric.keys().count('reference') != 0:
+							if not (metric['reference'].keys().count('threshold') != 0 and  metric['reference'].keys().count('threshold_type') != 0 and metric['reference'].keys().count('value') != 0 and metric['reference'].keys().count('tolerance') != 0):
 								continue
 							try:
-								threshold = float(metric['tolerance']['threshold'])
-								type = metric['tolerance']['type']
-								reference = metric['tolerance']['reference']									
+								tolerance = metric['reference']['tolerance']	
+								threshold = float(metric['reference']['threshold'])
+								threshold_type = metric['reference']['threshold_type']
+								reference = metric['reference']['value']									
 								try:
 									reference = float( reference )
 									refIsValue = True			
@@ -876,16 +909,21 @@ set format y '%f'
 						if len(ref_value) != 0:
 							try:
 								accuracy = abs( ( float(command_value) - float(ref_value)  )/float(ref_value)) * 100
-								threshold_v = abs(float(ref_value)*(threshold/100))						
-								if type.lower() == 'bilateral':
+								
+								if threshold_type.lower() == 'percentage':
+									threshold_v = abs(float(ref_value)*(threshold/100))						
+								elif threshold_type.lower() == 'absolute':								
+									threshold_v = abs(threshold)						
+	
+								if tolerance.lower() == 'bilateral':
 									validation = "Failed" if threshold<accuracy else "Passed"	
 									threshold_a_u.append(float(ref_value)+threshold_v)
 									threshold_a_l.append(float(ref_value)-threshold_v)
-								elif type.lower() == 'greater':	
+								elif tolerance.lower() == 'above':	
 									validation = "Passed" if threshold>accuracy and ref_value<command_value else "Failed"						
 									threshold_a_u.append(float(ref_value)+threshold_v)
 									threshold_a_l.append(float(ref_value))
-								elif type.lower() == 'lower':	
+								elif tolerance.lower() == 'below':	
 									validation = "Passed" if threshold>accuracy and ref_value>command_value else "Failed"						
 									threshold_a_l.append(float(ref_value)-threshold_v)
 									threshold_a_u.append(float(ref_value))
@@ -1090,7 +1128,7 @@ set format y '%f'
 		# Run dataset
 		#############
 		now = datetime.datetime.now()
-		newname = str(now.strftime("%Y-%m-%dT%H:%M:%S"))
+		newname = str(now.strftime("%Y-%m-%dT%Hh%Mm%Ss"))
 	
 		nprocs = str(dataset['numprocs']).split(',')
 		if len(nprocs) == 0:
@@ -1130,7 +1168,7 @@ set format y '%f'
 				time.sleep( 1 )
 				print "Resuming" 
 				now = datetime.datetime.now()
-				newname = str(now.strftime("%Y-%m-%dT%H:%M:%S"))
+				newname = str(now.strftime("%Y-%m-%dT%Hh%Mm%Ss"))
 				if dataset.keys().count('tasks_per_node')!=0 and dataset['tasks_per_node'] != None and  dataset['tasks_per_node'] != '':
 					if ( int(p)%int(dataset['tasks_per_node'])) == 0 :
 						n = str( int(( float(p)/float(dataset['tasks_per_node'])))  )	
@@ -1707,7 +1745,7 @@ set format y '%f'
 					if ( dataset.keys().count('metrics') != 0 ):
 						for metric in dataset['metrics']:
 							for elem in metric:
-								if elem != 'tolerance':
+								if elem != 'reference':
 									metric[elem] = reple.sub(dataset['outputs'][sstr],metric[elem])		
 								else:
 									for t in metric[elem]:
@@ -1720,7 +1758,7 @@ set format y '%f'
 					if ( dataset.keys().count('metrics') != 0 ):
 						for metric in dataset['metrics']:
 							for elem in metric:
-								if elem != 'tolerance':
+								if elem != 'reference':
 									metric[elem] = reple.sub(dataset[sstr],metric[elem])		
 								else:
 									for t in metric[elem]:
@@ -1944,13 +1982,13 @@ set format y '%f'
 		
 		if self.runs_lifespan == 0:
 			return	
-
+		
 		# remove hidden files and dirs from the list
 		bench   = [ d for d in os.listdir(self.runs_dir)  if not re.match('\\.',d) and os.path.isdir(self.runs_dir + "/" +d) ]	
 		what    = [ b+'/'+l for b in bench for l in os.listdir(self.runs_dir+'/'+b)  if not re.match('\\.',l) and os.path.isdir(self.runs_dir + "/" +b+"/"+l) ]
 		dataset = [ w+'/'+d for w in what for d in  os.listdir(self.runs_dir+'/' + w) if not re.match('\\.',d) and os.path.isdir(self.runs_dir + "/" +w+"/"+d)  ]
 	
-		dateexp = re.compile("\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d")		
+		dateexp = re.compile("\d\d\d\dY\d\dM\d\dT\d\dh\d\dh\d\ds")		
 		
 		self.log.plain("***********************************************")	
 		self.log.plain( "Removing old runs according to current policy of " + self.log.bold(str(self.runs_lifespan)) + " days"  )
@@ -1962,7 +2000,7 @@ set format y '%f'
 					for e in os.listdir(current +'/' + ud): 
 						mobj = dateexp.search(e)
 						if mobj:
-							fecha = datetime.datetime.strptime( mobj.group(0) , '%Y-%m-%dT%H:%M:%S')	
+							fecha = datetime.datetime.strptime( mobj.group(0) , '%Y-%m-%dT%Hh%Mm%Ss')	
 							now = datetime.datetime.now()
 							if  (now - fecha) > datetime.timedelta (days = self.runs_lifespan ):
 								toRemove.append( current + '/' + ud + '/' + e )
