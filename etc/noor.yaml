@@ -5,14 +5,14 @@ KUBE:
         path: /home/naranjja/Devel/KUBE
 
    RUNS:  
-        path: results/runs          # if the leading "/" is provided then the absolute path is taken, otherwise the relative path to HOME ([KUBE][HOME])  will be used       
+        path: data/runs          # if the leading "/" is provided then the absolute path is taken, otherwise the relative path to HOME ([KUBE][HOME])  will be used       
         lifespan:  1                # duration in days (integer value) ... if 0 keep runs results forever ... 
 
-   ANALYSIS: 
-        path: results/analysis      # if the leading "/" is provided then the absolute path is taken, otherwise the relative path to HOME ([KUBE][HOME])  will be used       
+   RESULTS: 
+        path: data/results      # if the leading "/" is provided then the absolute path is taken, otherwise the relative path to HOME ([KUBE][HOME])  will be used       
 
    TOOLS: 
-        path: tools                 # if the leading "/" is provided then the absolute path is taken, otherwise the relative path to HOME ([KUBE][HOME])  will be used
+        path: tools             # if the leading "/" is provided then the absolute path is taken, otherwise the relative path to HOME ([KUBE][HOME])  will be used
 
    BATCH:             
         - name: LSF
@@ -162,7 +162,7 @@ KUBE:
 
       FILESYSTEMS: 
          - name: gpfs_iozone3
-           active: true
+           active: false
            batch: None
            numprocs: 1
            modules:  module load gcc mpi-openmpi
@@ -177,7 +177,7 @@ KUBE:
                     output: output.wks
 
          - name: gpfs_mpi_io
-           active: false
+           active: true
            batch: LSF
            modules:  module load gcc mpi-openmpi
            numprocs: 16
