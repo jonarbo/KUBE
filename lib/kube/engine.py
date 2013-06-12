@@ -642,7 +642,7 @@ set format y '%f'
 				for k in allruns.keys():
 					repeat = False
 					for r in allruns[k]:
-						if re.match("FAILED_",r) !=	None or not os.path.isdir(rundir+'/'+k+'/'+r):
+						if re.match("INVALID_",r) !=	None or not os.path.isdir(rundir+'/'+k+'/'+r):
 							allruns[k].remove(r)		
 							repeat = True
 							break		
@@ -769,6 +769,10 @@ set format y '%f'
 									break		
 					
 					if failed == True:
+						# TODO: mark run dir as INVALID
+						thename = rundir + "/" + rd + "/" + i
+						newname = rundir + "/" + rd + "/INVALID_" + i
+ 						shutil.move( thename , newname )
 						continue
 							
 					# output data copied for this run
@@ -880,7 +884,15 @@ set format y '%f'
 						cmdoutput = syscall(command)
 						command_value = cmdoutput[0].strip()	
 						if len(cmdoutput[1].strip())!=0 or len(command_value)==0 :
-							logger.error('Error',"Opps! Some error found while trying to get the \'"+ metric['name']+"\' information in \'"+dataset['name']+"/" + i+"\'\nUsing the command: \'" + command +"\'\nPlease, be sure the run data is in place and the data was copied to the results dir.")
+							logger.error('Error',"Opps! Some error found while trying to get the \'"+ metric['name']+"\' information in \'"+dataset['name']+"/" + i+"\'\nUsing the command: \'" + command +"\'\nPlease, be sure the run data is in place and the data was copied to the results dir and if the execution ended correctly.")
+							logger.warning("Warning","Marking this run as \'INVALID\'")
+							thename = rundir + "/" + rd + "/" + i
+							newname = rundir + "/" + rd + "/INVALID_" + i
+ 							shutil.move( thename , newname )
+ 							logger.error("Refine stage not completed!!!")
+							os.chdir("..") 	
+							shutil.rmtree(i)	
+							break
 						else:											
 							ref_value = reference if refIsValue else syscall(reference)[0].strip()
 							if len(ref_value) != 0:
@@ -935,8 +947,8 @@ set format y '%f'
 					r.write( str(sort_dict[0][0]) + "  " + str(sort_dict[0][1]) + "  "  + str(sort_dict[0][2]) + "  "  + str(sort_dict[0][3]) + "  " + timestamp   + "  " + str(sort_dict[0][4]) + "  " + str(sort_dict[0][5]) + "  " + str(sort_dict[0][6]) + "\n"  )
 				r.flush
 				r.close		
-				
-				os.chdir("../..")				
+				os.chdir( resultsdir )
+
 
 #####################################################################                                           
 #
@@ -1065,6 +1077,7 @@ set format y '%f'
 			cwd = os.getcwd()
 			os.chdir(t)					
 
+			###########################
 			# If App copy the dataset
 			if isApp==True:
 				#APP SPECIFIC PART!!!	
@@ -1246,7 +1259,7 @@ set format y '%f'
 				# mark directory as failed
 				os.chdir(run_id)
 				os.chdir("..")
-				shutil.move( newname , "FAILED_"+newname )
+				shutil.move( newname , "INVALID_"+newname )
 				os.chdir(t)	
 
 
