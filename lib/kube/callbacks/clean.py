@@ -5,8 +5,8 @@ import sys
 import shutil
 from datetime import datetime , timedelta
 
-# Import the logger
-from kube.log 		import *
+# Import the printer
+from kube.printer 		import *
 # Import some useful stuff
 from kube.utils 	import *
 # Import core engine 
@@ -14,7 +14,7 @@ from kube.engine	import KUBE
 
 def cleanup(dir,since,to,delta):
 	# borrar solo el dir seleccionado entre since y to:
-	print "You are about to remove all data in "  + dir +"  since " + str(since) + " to " + str(to) 
+	printer.info( "Cleaning","You are about to remove all data in "  +  Printer.bold(dir) +"  since " + Printer.bold(str(since)) + " to " + Printer.bold(str(to)) )
 	var = raw_input("Are you sure you want to do that? (Yes/No)")	
 	if var=="Yes":			
 		for dd in walkDir(dir,to,delta):
@@ -24,7 +24,7 @@ def cleanup(dir,since,to,delta):
 			if not os.listdir( pd ) :	
 				shutil.rmtree( pd )						
 	else:
-		print "Cleaning cancelled"					
+		printer.info( "Cleaning","cancelled")				
 		return
 		
 	# cleaning empty dirs
@@ -36,7 +36,7 @@ def cleanup(dir,since,to,delta):
 			if  len( glob.glob(dd+"/*") )==0:
 				repeat = True
 				clean( dd ,True)			
-	print "Done."
+	printer.info("Cleaning", "Done." )
 		
 def start( args ):
 	""" 
@@ -52,17 +52,19 @@ def start( args ):
 			'runs':    kube.runs_dir, \
 			'results': kube.results_dir }	
 
-	print "Cleaning..." 
+	#printer.setCurrentTheme('None')
+	header = "Cleaning"
+	
 	opts = args.keys()
 	if len(opts)==0:
-		print "You are about to remove all stored results" 
+		printer.warning(header, Printer.bold("You are about to remove all stored results") )
 		var = raw_input("Are you sure you want to do that? (Yes/No)")	
 		if var=="Yes":			
 			clean( cleaner['runs'] )
 			clean( cleaner['results'] )
- 			print "Done."
+ 			printer.info( header, "Done." )
 		else:
-			print  "Cleaning cancelled"
+			printer.info( header, "cancelled" )
 		# end exit	
 		sys.exit(0)	
 	

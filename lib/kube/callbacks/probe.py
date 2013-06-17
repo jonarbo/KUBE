@@ -3,8 +3,8 @@
 
 from datetime import datetime , timedelta
 
-# Import the logger
-from kube.log 		import *
+# Import the printer
+from kube.printer	import *
 # Import some useful stuff
 from kube.utils 	import *
 # Import core engine 
@@ -51,7 +51,7 @@ def start( args ):
 				else:
 					delta = to - datetime(1973,05,02)
 			except Exception as x :
-				logger.error("Error","Possible wrong date format")
+				printer.error("Error","Possible wrong date format")
 				return
 			kube.timeAnalysis(target,mname,to,delta)	
 		
@@ -84,7 +84,7 @@ def start( args ):
 				else:
 					delta = to - datetime(1973,05,02)
 			except Exception as x :
-				logger.error("Error","Possible wrong date format")
+				printer.error("Error","Possible wrong date format")
 				return					
 			kube.kiviat(template,target,to,delta)	
 

@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# Import the logger
-from kube.log 		import *
 # Import some useful stuff
 from kube.utils 	import *
 # Import core engine 

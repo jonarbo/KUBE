@@ -4,6 +4,7 @@
 import os, inspect, subprocess, shlex
 from datetime import datetime , timedelta
 from dateutil import parser
+from kube.printer import *
 
 ######################################################
 #
@@ -12,8 +13,8 @@ from dateutil import parser
 ######################################################
 def clean(dir,removeDir=False):
 	"""Function that removes 'dir' and sub-directories inside 'dir'"""
-	
-	print "deleting ... " + dir
+	printer=Printer()
+	printer.info("deleting" , dir)
 
 	if not os.path.isdir(dir):
 		return 	

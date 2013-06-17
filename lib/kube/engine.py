@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-from kube.log import *
+from kube.printer import *
 from kube.utils import * 
 
 # import system issues
@@ -89,7 +89,7 @@ class KUBE:
 				repeat = False	
 		
 		if counter>19:
-			logger.error("Missing variable!!!","I suspect that you missed to define some variable in the config file that is needed; presumably in the batch script.\n" )
+			printer.error("Missing variable","I suspect that you missed to define some variable in the config file that is needed; presumably in the batch script." )
 			sys.exit(1)	
 				
 		return data	
@@ -109,15 +109,15 @@ class KUBE:
 		"""
 		
 		if not template or not os.path.isdir(template) :
-			logger.error("Error","Wrong arguments")
+			printer.error("Error","Wrong arguments")
 			sys.exit(1)
 		
 		template = os.path.abspath(template)
 		
-		logger.plain( "Reading data from: " + Log.bold( template ) )
+		printer.info( "Reading data from",template )
 		
 		if not os.path.exists(template+"/analysis.raw"):
-			logger.error("Data File not found!","The file " + Log.bold( template+"/analysis.raw") + " could not be found" )
+			printer.error("Data File not found","The file " + printer.bold( template+"/analysis.raw") + " could not be found" )
 			sys.exit(1)
 			
 		tf = open(template+"/analysis.raw", 'r') 
@@ -164,10 +164,10 @@ class KUBE:
 
 		if len(u) == 0 :
 			if target:	
-				#logger.plain("Reading data from target:")
+				#printer.plain("Reading data from target:")
 				if (os.path.isfile(target+"/analysis.raw")):
-					Log.Level = 1
-					logger.plain( Log.bold(target ))
+					Printer.Level = 1
+					#printer.plain( printer.bold(target ))
 
 				 	target = os.path.abspath(target)	
 					title_rundate_target = os.path.basename(target)
@@ -185,7 +185,7 @@ class KUBE:
 					#legend.append(os.path.basename(target))	
 					
 					if not os.path.exists(target+"/analysis.raw"):
-						logger.error("Data File not found!","The file " + Log.bold( target+"/analysis.raw") + " could not be found" )
+						printer.error("Data File not found","The file " + printer.bold( target+"/analysis.raw") + " could not be found" )
 						sys.exit(1)
 					tf = open(target+"/analysis.raw", 'r') 
 					ofc = tf.readline()
@@ -211,11 +211,11 @@ class KUBE:
 				legend.append( title_app_target +","+ title_dataset_target   +","+ title_runcase_target)						
 			
 				if os.path.isfile( file + "/analysis.raw"):
-					Log.Level = 1
-					logger.plain( Log.bold(file ) )
+					Printer.Level = 1
+					#printer.plain( printer.bold(file ) )
 				
 					if not os.path.exists( file+"/analysis.raw"):
-						logger.error("Data File not found!","The file " + Log.bold( target + "/" + file+"/analysis.raw") + " could not be found...skipping" )
+						printer.error("Data File not found","The file " + printer.bold( target + "/" + file+"/analysis.raw") + " could not be found...skipping" )
 						continue
 				
 					tf = open( file+"/analysis.raw", 'r') 
@@ -275,7 +275,7 @@ set term x11 persist title 'KUBE'  font 'sans'
 		kf.close()
 			
 		# and call it
-		print syscall ( "gnuplot " + gnuplotfile )[1]
+		syscall ( "gnuplot " + gnuplotfile )[1]
 
 #####################################################################                                           
 #
@@ -291,7 +291,7 @@ set term x11 persist title 'KUBE'  font 'sans'
 		"""
 		
 		if not target:
-			logger.error("Wrong arguments. Target dir arguments needed.")
+			printer.error("Wrong arguments","Target dir arguments needed")
 			sys.exit(1)
 			
  		metrics = []
@@ -308,10 +308,10 @@ set term x11 persist title 'KUBE'  font 'sans'
 		title_dataset = os.path.basename(title_dataset)
 				
 
-		print "Reading data from "+ Log.bold(target) 
+		printer.info( "Reading data from", target ) 
 
 		if not os.path.isdir(target):
-			logger.error("Wrong argument. Path to directory expected.")
+			printer.error("Wrong argument","Path to directory expected")
 			sys.exit(1)
 		
 		u=[]	
@@ -327,11 +327,11 @@ set term x11 persist title 'KUBE'  font 'sans'
 		
 		for file in u:
 			if os.path.isfile(target + "/" + file + "/analysis.raw"):    # and os.path.isfile(target + "/" + file + "/timestamp"):
-				Log.Level = 1
-				logger.plain( Log.bold(target + "/"+ file ) )
+				Printer.Level = 1
+				printer.info("-", target + "/"+ file)
 				
 				if not os.path.exists(target + "/" + file+"/analysis.raw"):  # or  not os.path.exists(target + "/" + file+"/timestamp")  :
-					logger.error("Data File not found!","The file " + Log.bold( target + "/" + file+"/analysis.raw") + " could not be found...skipping" )
+					printer.error("Data File not found","The file " + printer.bold( target + "/" + file+"/analysis.raw") + " could not be found...skipping" )
 					continue
 								
 				tf = open(target + "/" + file+"/analysis.raw", 'r') 
@@ -351,12 +351,12 @@ set term x11 persist title 'KUBE'  font 'sans'
 				tf.close
 			else:
 				if os.path.isfile(target + "/" + file):
-					logger.warning(Log.bold( file ) + " is not a directory")
+					printer.warning("Warning",printer.bold( file ) + " is not a directory")
 				else:		
-					logger.warning("No data found in: " + Log.bold( target + "/" + file ) )
+					printer.warning("Warning","No data found in " + printer.bold(target + "/" + file)  )
 		
 		if len(metrics)==0:
-			logger.warning("No metric information found!!!")
+			printer.warning("Warning","No metric information found!!!")
 			return
 	
 		ofname={}
@@ -441,7 +441,7 @@ set format y '%f'
 		kf.close()
 			
 		# and call it
-		print syscall ( "gnuplot " + gnuplotfile )[1]
+		syscall ( "gnuplot " + gnuplotfile )[1]
 
 #####################################################################                                           
 #
@@ -462,11 +462,11 @@ set format y '%f'
 					self.__refineFilesystem(fs)		
 
 		elif item == 'apps':
-			logger.plain("***********************************************")
-			logger.plain("***   KUBE refine stage for selected Apps:  ***")
-			logger.plain("***********************************************")
+			printer.plain(printer.bold("***********************************************"))
+			printer.plain(printer.bold("***")+"   KUBE refine stage for selected Apps:  " + printer.bold("***"))
+			printer.plain(printer.bold("***********************************************"))
 			if name and self.a_apps.keys().count(name.lower()) == 0:
-				logger.warning( "Warning", "Application " +  Log.bold( name ) + " not found or not active"	)
+				printer.warning( "Warning", "Application " +  printer.bold( name ) + " not found or not active"	)
 				return
 			if name:
 				self.__refineApp(name.lower(),To,Delta)	
@@ -475,11 +475,11 @@ set format y '%f'
 					self.__refineApp(app,To,Delta)	
 
 		elif item == 'nets':		
-			logger.plain("***********************************************")
-			logger.plain("***     KUBE refine stage for Networks:     ***")
-			logger.plain("***********************************************")
+			printer.plain(printer.bold("***********************************************"))
+			printer.plain(printer.bold("***") + "     KUBE refine stage for Networks:     "+printer.bold("***"))
+			printer.plain(printer.bold("***********************************************"))
 			if name and self.a_nets.keys().count(name.lower()) == 0:
-				logger.warning( "Warning", "Network " +  Log.bold( name ) + " not found or not active"	)
+				printer.warning( "Warning", "Network " +  printer.bold( name ) + " not found or not active"	)
 				return
 			if name:
 				self.__refineNet(name.lower())	
@@ -488,11 +488,11 @@ set format y '%f'
 					self.__refineNet(app)	
 
 		elif item == 'filesys':
-			logger.plain("***********************************************")
-			logger.plain("***     KUBE refine stage for Filesystems:  ***")
-			logger.plain("***********************************************")
+			printer.plain(printer.bold("***********************************************"))
+			printer.plain(printer.bold("***")+"     KUBE refine stage for Filesystems:  " +printer.bold("***"))
+			printer.plain(printer.bold("***********************************************"))
 			if name and  self.a_filesys.keys().count(name.lower()) == 0:
-				logger.warning( "Warning", "Filesystem " +  Log.bold( name ) + " not found or not active"	)
+				printer.warning( "Warning", "Filesystem " +  printer.bold( name ) + " not found or not active"	)
 				return
 			if name:
 				self.__refineFilesystem(name.lower())				
@@ -501,11 +501,11 @@ set format y '%f'
 					self.__refineFilesystem(app)	
 
 		elif item == 'synths':
-			logger.plain("***********************************************")
-			logger.plain("***     KUBE refine stage for  Synthetics:  ***")
-			logger.plain("***********************************************")
+			printer.plain(printer.bold("***********************************************"))
+			printer.plain(printer.bold("***")+"     KUBE refine stage for  Synthetics:  "+printer.bold("***"))
+			printer.plain(printer.bold("***********************************************"))
 			if name and self.a_synths.keys().count(name.lower()) == 0:
-				logger.warning( "Warning", "Benchmark " +  Log.bold( name ) + " not found or not active"	)
+				printer.warning( "Warning", "Benchmark " +  printer.bold( name ) + " not found or not active"	)
 				return
 			if name:
 				self.__refineSynthetics(name.lower())				
@@ -514,7 +514,7 @@ set format y '%f'
 					self.__refineSynthetics(app)	
 
 		else:
-			print "Unknown item: '" + str(item) + "'"
+			printer.error("Unknown item",  printer.bold(str(item)) ) 
 		
 		# after the analysis, remove runs that needs to be removed
 		self.__cleanOldRuns()
@@ -526,27 +526,29 @@ set format y '%f'
 			 it also creates a .cvs and a .raw files with the metrics specified in the YAML config file. The .raw file is used later on
 			 when visualizing the metric.
  		"""
- 		logger.log( name )
+ 		printer.info("App", name )
+		Printer.Level=Printer.Level+1
 		app = self.a_apps[name]
 		analysisd = self.results_dir + "/apps/"+ name + "/"
 		runsd = self.runs_dir + "/apps/"+ name + "/"
 		if not os.path.exists(runsd):
-			logger.warning("There is no run dir for this app: " + Log.bold(name) )
-			#return
-			#sys.exit(1)
+			printer.warning("There is no run dir for this app", printer.bold(name) )
 		if not os.path.exists(analysisd):
 			os.makedirs(analysisd)
 		
 		for dataset in app:
 			self.__refineDataset(dataset,runsd,analysisd,To,Delta)			
 
+		Printer.Level=Printer.Level-1
+
 	def __refineSynthetics(self,name):
-		logger.log( name )
+		printer.info("Synthetic", name )
+		Printer.Level=Printer.Level+1
 		synth = self.a_synths[name]
 		analysisd = self.results_dir + "/synthetics/"+ name + "/"
 		runsd = self.runs_dir + "/synthetics/"+ name + "/"
 		if not os.path.exists(runsd):
-			logger.warning("There is no run dir for this synthetic: " + Log.bold(name) )
+			printer.warning("There is no run dir for this synthetic" , printer.bold(name) )
 			#return
 			#sys.exit(1)
 		if not os.path.exists(analysisd):
@@ -554,14 +556,16 @@ set format y '%f'
 
 		for dataset in synth:	
 			self.__refineDataset(dataset,runsd,analysisd)		
+		Printer.Level=Printer.Level-1
 
 	def __refineFilesystem(self,name):
-		logger.log( name )
+		printer.info("Filesystem", name )
+		Printer.Level=Printer.Level+1
 		fs = self.a_filesys[name]
 		analysisd = self.results_dir + "/filesystems/"+ name + "/"
 		runsd = self.runs_dir + "/runs/filesystems/"+ name + "/"
 		if not os.path.exists(runsd):
-			logger.warning("There is no run dir for this filesystem: " + Log.bold(name) )
+			printer.warning("There is no run dir for this filesystem", printer.bold(name) )
 			#return
 			#sys.exit(1)
 		if not os.path.exists(analysisd):
@@ -569,15 +573,16 @@ set format y '%f'
 		
 		for dataset in fs:
 			self.__refineDataset(dataset,runsd,analysisd)	
-			
-			
+		Printer.Level=Printer.Level-1
+						
 	def __refineNet(self,name):
-		logger.log( name )
+		printer.info( "Network",name )
+		Printer.Level=Printer.Level+1
 		net = self.a_nets[name]
 		analysisd = self.results_dir + "/networks/"+ name + "/"
 		runsd = self.runs_dir + "/networks/"+ name + "/"
 		if not os.path.exists(runsd):
-			logger.warning("There is no run dir for this network: " + Log.bold(name) )
+			printer.warning("There is no run dir for this network",printer.bold(name) )
 			#return
 			#sys.exit(1)
 		if not os.path.exists(analysisd):
@@ -585,6 +590,7 @@ set format y '%f'
 
 		for dataset in net:		
 			self.__refineDataset(dataset,runsd,analysisd)		
+		Printer.Level=Printer.Level-1
 
 	def __refineDataset(self,dataset,runsd,analysisd,To=None,Delta=None):
 		import yaml
@@ -632,27 +638,27 @@ set format y '%f'
 			# if digest file is not there, create it and assume this dataset needs to be analyzed.
  			file( digestFile, 'w' ).write(str(digest))
 						
-		logger.log( "Dataset", "\'" + dataset['name'] + "\'")
+		printer.info( "Dataset",  dataset['name'] )	
+		Printer.Level=Printer.Level+1
 		# Analyze every run which is not already been analyzed
 		if os.path.exists(rundir):
 			allruns = dict( [ [r,os.listdir(rundir+'/'+r)] for r in os.listdir(rundir) ])
 			# now remove the known failure dirs
 			repeat = True
 			while repeat and len(allruns.keys())!=0:
+				repeat = False
 				for k in allruns.keys():
-					repeat = False
 					for r in allruns[k]:
 						if re.match("INVALID_",r) !=	None or not os.path.isdir(rundir+'/'+k+'/'+r):
 							allruns[k].remove(r)		
 							repeat = True
-							break		
 			# now remove already analyzed runs
 			for k in allruns.keys():
 				repeat = True
 				if k in allanalysis.keys():										
 					while repeat and len(allruns[k])!=0:
+						repeat = False
 						for r in allruns[k]:
-							repeat = False
 							if r in allanalysis[k]:
 								allruns[k].remove(r)
 								repeat = True
@@ -667,8 +673,8 @@ set format y '%f'
 				if cmd != None:
 					repeat = True
 					while repeat and len(allruns.keys())!=0:
+						repeat = False			
 						for k in allruns.keys():
-							repeat = False
 							for r in allruns[k]:
 								if os.path.isdir( rundir + "/" + k + "/" + r ):
 									files = os.listdir(rundir + "/" + k + "/" + r)
@@ -679,11 +685,11 @@ set format y '%f'
 											out,err = syscall( ncmd )	
 											if out.strip()==jobid.strip():
 												# the job is running ... remove it from the list	
-												logger.plain("Skipping running job: " + Log.bold(rundir + "/" + k + "/" + r) )
+												printer.warning("Skipping running job" , rundir + "/" + k + "/" + r )
 												allruns[k].remove(r)
 												repeat = True										
 											break		
-				
+					
 		# so far allruns contains only valid, new runs									
 		u = allruns
 		if len(fileredallanalysis)==0:
@@ -693,9 +699,11 @@ set format y '%f'
 
 		# if there is nothing in u (runs) and nothing has changed  .. skip dataset because there is nothing new
 		if len( [v for v in u.values() if len(v) !=0 ]  )==0 and not configChanged: 
-			print "... Nothing changed. Skipping"
+			printer.info( "Nothing changed", "Skipping dataset " + dataset['name'] )
+			Printer.Level=Printer.Level-1
 			return	
-
+	
+		
 		# Add to the new runs list, the dirs already analyzed ... Only if they have changed 
 		if configChanged:
 			for key in a.keys():
@@ -708,7 +716,8 @@ set format y '%f'
 						
 		if len(u) == 0:
 			# this should never happen...only when running refine with no new runs and no previous results
-			logger.plain(" ==> Nothing to refine")	
+			printer.warning("Nothing to refine")	
+			Printer.Level=Printer.Level-1
 			return
 		
 		# Do the analysis ...
@@ -716,16 +725,16 @@ set format y '%f'
 		END = 2*math.pi
 		for rd in u:
 		
-			Log.Level=1
-			logger.plain( "=> \'" + rd + "\'")
+			#printer.info("Run", rd )
 					
 			#get the cpus from the run name:
 			str2find = "(\d+)cpus_"	
 			reple = re.compile( str2find )
 			mobj = reple.search(rd)
 			cpus = mobj.group(1)
-			
+
 			for i in u[rd]:
+				printer.info("Run", rd +"/" +i )
 				timestamp = i
 				# change to analysis dir
 				os.chdir( resultsdir )
@@ -746,8 +755,8 @@ set format y '%f'
 								if os.path.isfile(rundir + "/" + rd + "/" + i + "/" + dataset['outputs'][outp]) :					
 									shutil.copy( rundir + "/" + rd + "/" + i + "/" + dataset['outputs'][outp] , rd+"/"+i+"/")
 								else:
-									logger.waring("Warning","File " + Log.bold( rundir + "/" + rd + "/" + i + "/" + str(dataset['outputs'][outp]) ) + " Does not exist.")
-									logger.error("Refine stage not completed!!!")
+									printer.warning("Warning","File " + printer.bold( rundir + "/" + rd + "/" + i + "/" + str(dataset['outputs'][outp]) ) + " Does not exist.")
+									printer.error("Refine stage not completed!!!")
 									failed = True
 									shutil.rmtree( rd+"/"+i )	
 									break
@@ -762,8 +771,8 @@ set format y '%f'
 								if os.path.isfile(rundir + "/" + rd + "/" + i + "/" + dataset['outputs'][outp]) :					
 									shutil.copy( rundir + "/" + rd + "/" + i + "/" + dataset['outputs'][outp] , rd + "/"+ i +"/")
 								else:
-									logger.warning("Warning","File " + Log.bold( rundir + "/" + rd + "/" + i + "/" + str(dataset['outputs'][outp]) ) + " Does not exist.")
-									logger.error("Refine stage not completed!!!")
+									printer.warning("Warning","File " + printer.bold( rundir + "/" + rd + "/" + i + "/" + str(dataset['outputs'][outp]) ) + " Does not exist.")
+									printer.error("Refine stage not completed!!!")
 									shutil.rmtree(rd+"/"+i)								
 									failed = True
 									break		
@@ -833,7 +842,7 @@ set format y '%f'
 									refIsValue = False			
 	
 							except:
-								logger.warning( "Skipping metric \'"+ name + "\' in dataset: \'" + dataset['name']  + "\' Please check out the config params for this metric." )
+								printer.warning( "Skipping metric", printer.bold(name) + " in dataset: " + printer.bold(dataset['name'])  + ". Please check out the config params for this metric." )
 								continue
 
 						# replace references to the output section						
@@ -884,12 +893,12 @@ set format y '%f'
 						cmdoutput = syscall(command)
 						command_value = cmdoutput[0].strip()	
 						if len(cmdoutput[1].strip())!=0 or len(command_value)==0 :
-							logger.error('Error',"Opps! Some error found while trying to get the \'"+ metric['name']+"\' information in \'"+dataset['name']+"/" + i+"\'\nUsing the command: \'" + command +"\'\nPlease, be sure the run data is in place and the data was copied to the results dir and if the execution ended correctly.")
-							logger.warning("Warning","Marking this run as \'INVALID\'")
+							printer.error("Oppsss!!!","Some error found while trying to get the "+ printer.bold(metric['name']) + " information in "+ printer.bold(dataset['name']+ "/" + i) +"\nUsing the command: " + printer.bold(command) +"\nPlease, be sure the run data is in place and the data was copied to the results dir and if the execution ended correctly.")
+							printer.warning("Warning","Marking this run as "+ printer.bold(" INVALID"))
 							thename = rundir + "/" + rd + "/" + i
 							newname = rundir + "/" + rd + "/INVALID_" + i
  							shutil.move( thename , newname )
- 							logger.error("Refine stage not completed!!!")
+ 							printer.error("Refine stage not completed!!!")
 							os.chdir("..") 	
 							shutil.rmtree(i)	
 							break
@@ -931,9 +940,7 @@ set format y '%f'
 								units_a.append(units)
 							else:
 								units_a.append('Unknown')
-
-				Log.Level=0
-			
+	
 				# Finished proceesing the metrics. Close the csv file and prepare the raw file
 				o.flush()
 				o.close
@@ -948,7 +955,7 @@ set format y '%f'
 				r.flush
 				r.close		
 				os.chdir( resultsdir )
-
+		Printer.Level=Printer.Level-1
 
 #####################################################################                                           
 #
@@ -969,11 +976,11 @@ set format y '%f'
 					self.__runFilesys(fs)		
 				
 		elif item == 'apps':
-			logger.plain("********************************************")			
-			logger.plain("***  Running KUBE for selected Apps:     ***")
-			logger.plain("********************************************")
+			printer.plain(printer.bold("********************************************"))			
+			printer.plain(printer.bold("***")+"  Running KUBE for selected Apps:     "+ printer.bold("***"))
+			printer.plain(printer.bold("********************************************"))
 			if name and self.a_apps.keys().count(name.lower()) == 0:
-				logger.warning("Warning","Application " +  Log.bold(name) + " not found or not active"	)
+				printer.warning("Warning","Application " +  printer.bold(name) + " not found or not active"	)
 				return		
 			if  name:
 				self.__runApp(name.lower())	
@@ -982,11 +989,11 @@ set format y '%f'
 					self.__runApp(app)
 				
 		elif item == 'nets':			
-			logger.plain("********************************************")			
-			logger.plain("***  Running KUBE for selected Networks: ***")
-			logger.plain("********************************************")
+			printer.plain(printer.bold("********************************************"))			
+			printer.plain(printer.bold("***")+"  Running KUBE for selected Networks: "+printer.bold("***"))
+			printer.plain(printer.bold("********************************************"))
 			if name  and self.a_nets.keys().count(name.lower()) == 0:
-				logger.warning("Warning","Network " +  Log.bold(name) + " not found or not active"	)
+				printer.warning("Warning","Network " +  printer.bold(name) + " not found or not active"	)
 				return		
 			if  name:
 				self.__runNet(name.lower())
@@ -995,11 +1002,11 @@ set format y '%f'
 					self.__runNet(app)
 				
 		elif item == 'filesys':
-			logger.plain("*********************************************")			
-			logger.plain("*** Running KUBE for selected Filesystem: ***")
-			logger.plain("*********************************************")
+			printer.plain(printer.bold("*********************************************"))
+			printer.plain(printer.bold("***")+" Running KUBE for selected Filesystem: "+printer.bold("***"))
+			printer.plain(printer.bold("*********************************************"))
 			if name  and self.a_filesys.keys().count(name.lower()) == 0:
-				logger.warning("Warning","Filesystem " +  Log.bold(name) + " not found or not active"	)
+				printer.warning("Warning","Filesystem " +  printer.bold(name) + " not found or not active"	)
 				return		
 			if  name:
 				self.__runFilesys(name.lower())
@@ -1008,11 +1015,11 @@ set format y '%f'
 					self.__runFilesys(app)
 		
 		elif item == 'synths':
-			logger.plain("**********************************************")			
-			logger.plain("***  Running KUBE for selected Synthetics: ***")
-			logger.plain("**********************************************")
+			printer.plain(printer.bold("**********************************************"))			
+			printer.plain(printer.bold("***")+"  Running KUBE for selected Synthetics: "+printer.bold("***"))
+			printer.plain(printer.bold("**********************************************"))
 			if name  and self.a_synths.keys().count(name.lower()) == 0:
-				logger.warning("Warning","Benchmark " +  Log.bold(name) + " not found or not active"	)
+				printer.warning("Warning","Benchmark " +  printer.bold(name) + " not found or not active"	)
 				return		
 			if  name:
 				self.__runSynthetics(name)
@@ -1026,46 +1033,55 @@ set format y '%f'
 	def __runApp(self,which):
 		""" Run the given app whose name is specified
 		"""
-		logger.log(which)
+		printer.info("App",which)
+		Printer.Level = Printer.Level + 1
 		app = self.a_apps[which]
 		source = self.home + "/bench/apps/"+ which + "/"
 		target = self.runs_dir + "/apps/" + which + "/"
 		self.__runBasic(app,source,target,True)
+		Printer.Level = Printer.Level - 1
 	
 
 	def __runSynthetics(self, which):
 		""" Run the given Synthetic whose name is specified
 		"""
-		logger.log(which)
+		printer.info("Synthetic",which)
+		Printer.Level = Printer.Level + 1
 		synth = self.a_synths[which]
 		source = self.home + "/bench/synthetics/"+ which + "/"
 		target = self.runs_dir + "/synthetics/" + which + "/"
 		self.__runBasic(synth,source,target)
-
+		Printer.Level = Printer.Level - 1
+		
 	def __runNet(self, which):
 		""" Run the given Network whose name is specified
 		"""
-		logger.log(which)
+		printer.info("Network",which)
+		Printer.Level = Printer.Level + 1	
 		net = self.a_nets[which]
 		source = self.home + "/bench/networks/"+ which + "/"
 		target = self.runs_dir +  "/networks/" + which + "/"
 		self.__runBasic(net,source,target)
-
+		Printer.Level = Printer.Level - 1
+		
 	def __runFilesys(self, which):
 		""" Run the given Filesystem benchmark whose name is specified
 		"""
-		logger.log(which)
+		printer.info("Filesystem",which)
+		Printer.Level = Printer.Level + 1	
 		net = self.a_filesys[which]
 		source = self.home + "/bench/filesystems/"+ which + "/"
 		target = self.runs_dir + "/filesystems/" + which + "/"
 		self.__runBasic(net,source,target)
+		Printer.Level = Printer.Level - 1
 
-
-	def __runBasic(self,bench,source,target,isApp=False):
+	def __runBasic(self,bench,source,target,isApp=False):	
 		for dataset in bench:
-			logger.plain( "Dataset: " +  Log.bold(dataset['name'] ) )
+			printer.info( "Dataset" , printer.bold(dataset['name']) )
+			Printer.Level = Printer.Level + 1
 			if not os.path.exists(source):
-				logger.error("Dataset Error:","Could not find: " + source)
+				printer.error("Could not find" + source)
+				Printer.Level = Printer.Level - 1	
 				sys.exit(1)        	
 			t = target + dataset['name'] +"/"
 			if not os.path.exists(t):
@@ -1083,39 +1099,43 @@ set format y '%f'
 				#APP SPECIFIC PART!!!	
 	 			s = source + dataset['name']+".tgz" 	
 	 			if not os.path.exists(s):
-	 				logger.error("Dataset Error:","Could not find: " + s)
+	 				printer.error("Dataset Error","Could not find: " + s)
 	 				sys.exit(1)       	
 	 			# Uncompress dataset:
 	 			file = s  
-	 			logger.plain( "Unpacking file: "+ Log.bold( file ))
+	 			printer.info( "Unpacking file"+ printer.bold( file ))
 	 			cmd = "tar -zxf " + file 
-	 			print cmd
+	 			printer.info("Command", cmd)
 	 			os.system(cmd)				
 
 			self.__runDataset(dataset,source,t,isApp)
 			shutil.rmtree(  dataset['name'] )		
-
+			Printer.Level = Printer.Level - 1
+			
 	def __runDataset(self,dataset,source,t, isApp ):
 		############# 
 		# Run dataset
 		#############
 		now = datetime.datetime.now()
 		newname = str(now.strftime("%Y-%m-%dT%Hh%Mm%Ss"))
-	
+
 		nprocs = str(dataset['numprocs']).split(',')
 		if len(nprocs) == 0:
-			logger.warning("Warning","No procs found ... dataset " + Log.bold( str( dataset['name'] ))  + " skipped")
+			printer.warning("No procs found in", printer.bold( str( dataset['name'] )) + " ... skipped")
+			Printer.Level = Printer.Level - 1	
 			return
 		
-		print "---------------------------------------------------------"
+		printer.plain(printer.bold("---------------------------------------------------------"))
 		for p in nprocs:
 			p = p.strip()
 			try:
 				if int(p)==0:
-					logger.warning("Warning","No valid proc found ... dataset " + Log.bold( str( dataset['name'] ))  + " skipped")
+					printer.warning("No valid proc found in" , printer.bold( str( dataset['name'] ))  + " ... skipped")
+					Printer.Level = Printer.Level - 1	
 					return
 			except:
-				logger.warning("Warning","No valid proc found ... dataset " + Log.bold( str( dataset['name'] ))  + " skipped")
+				printer.warning("No valid proc found in" , printer.bold( str( dataset['name'] ))  + " ... skipped")
+				Printer.Level = Printer.Level - 1	
 				return
 				
 			if dataset.keys().count('tasks_per_node')!=0 and dataset['tasks_per_node'] != None and  dataset['tasks_per_node'] != '':
@@ -1129,16 +1149,24 @@ set format y '%f'
 				#run_id = dataset['name'] + "_" + p + "cpus_"  + str(newname)
 				run_id =  p + "cpus/"  + str(newname)
 			
-			print "Run ID: " + Log.bold( run_id) , 
-	
+			printer.info( "Run ID" , printer.bold( run_id) + " ... ", wait="true" ) 
+#			Printer.Level = Printer.Level + 1
+			waiting = True
+						
 			# change dir name to identify as an unique outcome	
 			if os.path.isdir( run_id ):
-				print "\n"
-				logger.plain("Directory: " +   Log.bold(run_id)  +" already exists" + ". Trying to run the same dataset in less than a second.")
-				print "\tDelaying a second..." ,
+				if waiting:
+					printer.info("") # remove the wait flag
+					waiting = None
+				Printer.Level = Printer.Level + 1				
+				printer.warning("Directory already exists" ,   printer.bold(run_id) + ". Trying to run the same dataset in less than a second.")
+				printer.info("Delaying a second ...",wait="true")
+				oLevel = Printer.Level
+				Printer.Level = 0
 				sys.stdout.flush()		 
 				time.sleep( 1 )
-				print "Resuming" 
+				printer.info( "Resuming" ) 
+				Printer.Level = oLevel
 				now = datetime.datetime.now()
 				newname = str(now.strftime("%Y-%m-%dT%Hh%Mm%Ss"))
 				if dataset.keys().count('tasks_per_node')!=0 and dataset['tasks_per_node'] != None and  dataset['tasks_per_node'] != '':
@@ -1151,6 +1179,7 @@ set format y '%f'
 				else:
 					#run_id = dataset['name'] + "_" + p + "cpus_"  + str(newname)
 					run_id =  p + "cpus/"  + str(newname)
+				Printer.Level = Printer.Level - 1
 			
 			shutil.copytree(  dataset['name'] , run_id )		
 
@@ -1175,20 +1204,24 @@ set format y '%f'
 				elif dataset.keys().count("exe") != 0 :
 					exe = dataset['exe']
 					
-					
 				# Now copy files  if any				
 				if files != None:	
 					inputs = str(files).split(',')
 					for input in inputs:
 						if input != 'None' and input != "" and input != "u''":
 							input = input.strip()
-							logger.plain( "Copying dependency file: "+ Log.bold( str(input) )  + " into run directory")
+							if waiting:
+								printer.info("") # remove the wait flag
+								waiting = None
+							Printer.Level = Printer.Level + 1
+							printer.info( "Copying dependency file" , printer.bold( str(input) )  + " into run directory")
 							# input is always relative to the 'source' directory
 							if not os.path.exists( os.path.dirname("./" + input )) :
 								os.makedirs( os.path.dirname("./" + input ) )
 							file = glob.glob(os.path.join( source + dataset['name']+ '/'  , input))
 							for f in file:
 								shutil.copy( f ,os.path.dirname("./" + input )  )
+							Printer.Level = Printer.Level - 1
 							
 				if not re.match("/",exe): # Is not in full path format
 					if  os.path.exists(source + dataset['name']+ '/' + exe ):
@@ -1197,7 +1230,12 @@ set format y '%f'
 						if not os.path.isfile( "./" + exe ):	
 							shutil.copy( source + dataset['name']+ '/' + exe , "./" + exe)
 					else:
-						logger.warning("Warning","Can't copy exe file. File not found. Plese check the benchmark and the configuration file")
+						if waiting:
+							printer.info("") # remove the wait flag
+							waiting = None
+						Printer.Level = Printer.Level + 1							
+						printer.warning("File not found","Can't copy exe file. Plese check the benchmark and the configuration file")
+						Printer.Level = Printer.Level - 1
 						sys.exit(1)
 	
 			failed = False			
@@ -1206,13 +1244,18 @@ set format y '%f'
 				# No batch system found .... 
 				syscall( data, False )
 				tops = data.split("|")[0].split()
-				logger.warning("Running"," ".join(tops))
+				Printer.Level = Printer.Level + 1		
+				if waiting:
+					printer.info("") # remove the wait flag
+					waiting = None		
+				printer.info("Running"," ".join(tops))
 				checkcmd = "ps -fea | grep \"" + " ".join(tops)  + "\" | grep -v grep  | wc -l "				
 				out,err = syscall (checkcmd)
 				if str(out).strip().isdigit():
-					print "... Running " + str(out).strip() + " instances" 
+					printer.info( "Instances" , str(out).strip()  )
 				else:
-					logger.error("Command line execution","It seems the task is not running, please confirm it yourself.")
+					printer.error("Command line execution","It seems the task is not running, please confirm it yourself.")
+				Printer.Level = Printer.Level + 1	
 
 			elif  dataset['batch'] == "MANUAL":
 				syscall( data )
@@ -1225,7 +1268,12 @@ set format y '%f'
 				# get the batch system submission commands	
 				mybatch = self.__getBatchSystem(dataset)
 				if mybatch == None:
-					logger.error("Batch system error","Could not find any valid Batch system.")
+					if waiting:
+						printer.info("") # remove the wait flag
+						waiting = None
+					Printer.Level = Printer.Level + 1	
+					printer.error("Batch system error","Could not find any valid Batch system.")
+					Printer.Level = Printer.Level - 1			
 					sys.exit(1)
 					
 				submit_cmd = mybatch['submit']['command']
@@ -1244,13 +1292,24 @@ set format y '%f'
 					jobid = mobj.group(1)
 					cmd = "touch batch.jobid." + jobid
 					syscall( cmd )
-					print "... Submitted"
+					oLevel = Printer.Level
+					if waiting:
+							Printer.Level = 0
+							printer.info("Submitted")
+							Printer.Level = oLevel
+					else:
+						Printer.Level = Printer.Level + 1
+						printer.info("Submitted")
+						Printer.Level = Printer.Level - 1
 				else:
-					logger.error("Warning","It seems there was a problem while submitting this job.")
-					Log.Level = 1
-					logger.warning("Please read the following error message:")
-					Log.Level = 2
-					logger.plain(err)
+					if waiting:
+						printer.info("") # remove the wait flag
+						waiting = None
+					Printer.Level = Printer.Level + 1	
+					printer.error("Warning","It seems there was a problem while submitting this job.")
+					printer.warning("Please read the following error message:")
+					printer.plain(err)
+					Printer.Level = Printer.Level - 1
 					failed = True
 													
 			#os.chdir("..")	
@@ -1261,8 +1320,8 @@ set format y '%f'
 				os.chdir("..")
 				shutil.move( newname , "INVALID_"+newname )
 				os.chdir(t)	
-
-
+			
+			
 #####################################################################                                           
 #
 #	Print Config info functions (view command)
@@ -1272,44 +1331,45 @@ set format y '%f'
 		""" Prints out the configuration for a given 'item' and 'name' or the global configuration
 			if no item is given
 		"""		
-		logger.log("*************************************************************")
-		logger.log("***  Current configuration for the KAUST Benchmark Suite  ***"	)
-		logger.log("*************************************************************")
+		printer.plain(printer.bold("*************************************************************"))
+		printer.plain(printer.bold("***")+"  Current configuration for the KAUST Benchmark Suite  "+printer.bold("***"))
+		printer.plain(printer.bold("*************************************************************"))
 			
 		if item == None: # means show the global configuration	
 	
-			logger.log("KUBE Home",self.home )
-			logger.log("KUBE Runs dir",self.runs_dir )
-			logger.log("KUBE Results dir",self.results_dir )
-			logger.log("KUBE Batch Systems:" )
+			printer.info("KUBE Home",self.home )
+			printer.info("KUBE Runs",self.runs_dir )
+			printer.info("KUBE Results",self.results_dir )
+			printer.info("KUBE Batch Systems:" )
 						
 			for nbatch in self.batchs:
-				Log.Level = 1
-				logger.log(nbatch['name'] +":") 
-				Log.Level = 2
+				Printer.Level = Printer.Level + 1
+				printer.info(nbatch['name'] +":") 
+				Printer.Level = Printer.Level + 1
 				if  nbatch['name'] != "MANUAL" :
-					logger.log("Submission script",nbatch['script'])
+					printer.info("Submission script",nbatch['script'])
 				else:
-					logger.log("Submission command",nbatch['submit']['command'] + ' '+ nbatch['submit']['parameters'])			
-		
-			logger.log("Items to Benchmark")			
+					printer.info("Submission command",nbatch['submit']['command'] + ' '+ nbatch['submit']['parameters'])			
+				Printer.Level = Printer.Level - 2 
+				
+			printer.info("Items to Benchmark")			
 			self.__viewApp()	
 			self.__viewFS()
 			self.__viewNet()
 			self.__viewSynths()
 
 		elif item == 'apps':
-			logger.plain("\n***  Showing configuration for selected App  ***\n")
+			printer.plain(printer.bold("***")+"  Showing configuration for selected App  "+printer.bold("***"))
 			self.__viewApp(name)	
 		
 		elif item == 'filesys':
-			logger.plain("\n***  Showing configuration for Filesystems  ***\n"	)
+			printer.plain(printer.bold("***")+"  Showing configuration for Filesystems  "+printer.bold("***"))	
 			self.__viewFS(name)
 		elif item == 'nets':
-			logger.plain("\n***  Showing configuration for Networks  ***\n")
+			printer.plain(printer.bold("***")+"  Showing configuration for Networks  "+printer.bold("***"))
 			self.__viewNet(name)
 		elif item == 'synths':
-			logger.plain("\n***  Showing configuration for Synthetics benchmarks ***\n")	
+			printer.plain(printer.bold("***")+"  Showing configuration for Synthetics benchmarks "+printer.bold("***"))	
 			self.__viewSynths(name)
 		else:
 			print "Unknown item: '" + str(item) + "'"
@@ -1318,26 +1378,27 @@ set format y '%f'
 		""" Prints out configuration information for a specific app or for All apps
 		"""
 		if which==None: # means ALL
-			#Log.Level = 1
-			#logger.log("Inactive Apps", str(self.i_apps) )
-			Log.Level = 1
-			logger.log("Apps"," " )
-			#logger.log("Active Apps"," " )			
+			printer.info("Apps"," " )
+			#Printer.Level = Printer.Level + 1
+			#printer.info("Active Apps"," " )			
 			for k in self.a_apps.keys():
-				Log.Level = 2
-				#logger.data(k,"with ..." )
-				logger.log(k,"with ..." )
+				Printer.Level = Printer.Level + 1
+				printer.info(k," " )
 				for l in range(len(self.a_apps[k])):
-					Log.Level =3
-					logger.log("dataset",str( self.a_apps[k][l]['name']))
+					Printer.Level = Printer.Level + 1
+					printer.info("dataset",str( self.a_apps[k][l]['name']))
 					for litem in  self.a_apps[k][l]:
 						if litem != 'name' and litem != 'outputs' and litem != 'metrics' and litem != 'datasets' and litem != 'active' and not re.match("launcher",litem) and  not re.match("#\d+#",litem):
 							if str(self.a_apps[k][l][litem]).strip() != None or str(self.a_apps[k][l][litem]).strip() != '' :
-								Log.Level = 4								
-								logger.log(litem ,str( self.a_apps[k][l][litem])  )
+								Printer.Level = Printer.Level + 1
+								printer.info(litem ,str( self.a_apps[k][l][litem])  )
+								Printer.Level = Printer.Level - 1
+					Printer.Level = Printer.Level - 1			
+				Printer.Level = Printer.Level - 1	
+			#Printer.Level = Printer.Level - 1	
 		else:	
 			if which.lower() != "all" and  self.a_apps.keys().count(which) == 0:
-				logger.warning("Warning","Application " + Log.bold(which)  + " not found or not active")
+				printer.warning("Warning","Application " + printer.bold(which)  + " not found or not active")
 			else:	
 				if which.lower() != "all" :
 					for k in self.a_apps.keys():
@@ -1376,62 +1437,58 @@ set format y '%f'
 		
 	def __printBatchSystemInfo(self,mybatch):
 		if 	 mybatch == None:
-			logger.log("Using command line execution\n")
+			printer.info("Using command line execution\n")
 			return 
 						
 		submit_cmd = mybatch['submit']['command']
 		submit_params = mybatch['submit']['parameters']
+		
 		if  mybatch['name'] == "MANUAL":
 			# No batch system found .... 
-			logger.log("Using manual launcher:")
-			Log.Level = 1
-			#logger.data(submit_cmd +" " + submit_params )
-			logger.log(submit_cmd +" " + submit_params )
+			printer.info("Using manual launcher", submit_cmd +" " + submit_params )
 		else:
 			submit_script = mybatch['script']
-			logger.plain("Using " + Log.bold(str(mybatch['name']))+ " batch system" )
-			logger.log("Submission command:")
-			Log.Level = 1
-			logger.log(submit_cmd +" " + submit_params )
-		print "\n"
+			printer.plain("Using " + printer.bold(str(mybatch['name']))+ " batch system" )
+			printer.info("Submission command",submit_cmd +" " + submit_params)
+		printer.plain(printer.bold("-------------------------------------------------"))
 
-	def __printDatasetInfo(self,which):
-		Log.Level = 0
+	def __printDatasetInfo(self,which):	
 		for   dataset in which:
 			nprocs = str(dataset['numprocs']).split(',')
 			if len(nprocs) == 0:
-				logger.warning("Warning","No procs found ... dataset " + Log.bold(str( dataset['name'] ))  +" skipped")
+				printer.warning("No procs found in" + printer.bold(str( dataset['name'] ))  +" ... skipped")
 				continue
 			for p in nprocs:
-				logger.plain("dataset: " + Log.bold(str( dataset['name'] )) + " with " +  Log.bold(p)  + " procs")
-				logger.log("Submission script:")
+				printer.plain("dataset: " + printer.bold(str( dataset['name'] )) + " with " +  printer.bold(p)  + " procs")
+				printer.info("Submission script:")
 				data = self.__getBatchScript(dataset,p.strip())
 				print data
-				print "-------------------------------------------------"			
+				printer.plain(printer.bold("-------------------------------------------------"))			
 
 	def __printBaseInfo(self, who, all ,which,section):
 		""" Prints out configuration common information for Networks, Filesystems and Synthetics benchmarks
 		"""
-		if which==None: # means ALL
-			Log.Level = 1	
-			logger.log(str(section)," " )		
+		if which==None: # means ALL		
+			printer.info(str(section)," " )		
 			for k in who.keys():
-				Log.Level =	 2
-				logger.log(k," " )
+				Printer.Level = Printer.Level + 1
+				printer.info(k," " )
 				for l in range(len(who[k])):
-					Log.Level =3
-					logger.log("dataset",str( who[k][l]['name']))
+					Printer.Level = Printer.Level + 1
+					printer.info("dataset",str( who[k][l]['name']))
 					for litem in  who[k][l]:
 						if litem == 'numprocs' or litem == 'tasks_per_node' or litem == 'exe' or litem == 'args' or litem == 'batch' and  not re.match("#\d+#",litem):
-							Log.Level = 4
-							logger.log(litem ,str( who[k][l][litem])  )
+							Printer.Level = Printer.Level + 1
+							printer.info(litem ,str( who[k][l][litem])  )
+							Printer.Level = Printer.Level - 1
+					Printer.Level = Printer.Level - 1
+				Printer.Level = Printer.Level - 1			
 		else:
 			if which.lower() != "all" and  who.keys().count(which) == 0:
-				logger.warning("Warning","Element " + Log.bold(which)  + " not found or not active")
+				printer.warning("Warning","Element " + printer.bold(which)  + " not found or not active")
 			else:
-				Log.Level = 0	
 				if which.lower() != "all":
-					logger.log(str(which)+"\n","" )
+					printer.info(str(which)+"\n","" )
 					for k in who.keys():
 						if which==k:
 							mybatch=[]
@@ -1444,13 +1501,12 @@ set format y '%f'
 				else:	
 					for k in who.keys():
 						mybatch=[]
-						logger.log(str(k)+"\n","" )
+						printer.info(str(k)+"\n","" )
 						for tapp in all:
 							if tapp['name'] == k:
 								mybatch = self.__getBatchSystem(tapp)
 					 			self.__printBatchSystemInfo(mybatch)
 								self.__printDatasetInfo(who[k])
-
 
 
 	def debug(self):
@@ -1472,12 +1528,12 @@ set format y '%f'
 			for app in self.apps:
 				if  app.keys().count('name')==0 or \
 					app.keys().count('active')==0:
-					logger.error("Config file error","'active' and 'name' are mandatory fields within an APP ... Skipping this entry")
+					printer.error("Config file error","'active' and 'name' are mandatory fields within an APP ... Skipping this entry")
 					self.apps.remove(app)
 					repeat = True
 				else:
 					if app['active'] and ( app.keys().count('datasets')==0 or app.keys().count('batch')==0 or app.keys().count('exe')==0  ):
-						logger.error("Config file Error"," 'datasets', 'exe' and 'batch' fields are required for any active APP: " + Log.bold(app['name']) + " ... Skipping this entry")
+						printer.error("Config file Error"," 'datasets', 'exe' and 'batch' fields are required for any active APP: " + printer.bold(app['name']) + " ... Skipping this entry")
 						self.apps.remove(app)
 						repeat = True		
 
@@ -1495,7 +1551,7 @@ set format y '%f'
 					repeat = False
 					for dataset in self.a_apps[napp]:
 						if dataset.keys().count('name')==0 or dataset.keys().count('active')==0:
-							logger.error("Config file error","'name' and 'active' fields are required for any dataset in app: " + Log.bold(napp) + " ... Skipping this dataset")
+							printer.error("Config file error","'name' and 'active' fields are required for any dataset in app: " + printer.bold(napp) + " ... Skipping this dataset")
 							self.a_apps[napp].remove(dataset)
 							repeat = True
 						elif dataset['active'] != True:
@@ -1543,12 +1599,12 @@ set format y '%f'
 								else:
 									dataset[sk] = "" 		
 						if dataset.keys().count('numprocs')==0 :
-							logger.error("Config file error"," Dataset of " + Log.bold(appname) + " found without 'numprocs'. This tag is mandatory!!!") 
-							logger.error("Please revise your configuration file !!!")
+							printer.error("Config file error"," Dataset of " + printer.bold(appname) + " found without 'numprocs'. This tag is mandatory!!!") 
+							printer.error("Please revise your configuration file !!!")
 							sys.exit(1)	
 						elif dataset.keys().count('outputs')==0 :
-							logger.error("Config file error"," Dataset of " + Log.bold(appname) + " found without 'outputs'. This tag is mandatory!!!") 
-							logger.error("Please revise your configuration file !!!")
+							printer.error("Config file error"," Dataset of " + printer.bold(appname) + " found without 'outputs'. This tag is mandatory!!!") 
+							printer.error("Please revise your configuration file !!!")
 							sys.exit(1)	
 
 						break # step out apps loop
@@ -1716,7 +1772,7 @@ set format y '%f'
 					repeat = False
 					for dataset in a_elems[elem]:
 						if dataset.keys().count('name')==0 or dataset.keys().count('active')==0:
-							logger.error("Config file error","'name' and 'active' fields are required for any dataset in "+ mstr +": " + Log.bold(elem) + " ... Skipping this dataset")
+							printer.error("Config file error","'name' and 'active' fields are required for any dataset in "+ mstr +": " + printer.bold(elem) + " ... Skipping this dataset")
 							a_elems[elem].remove(dataset)
 							repeat = True
 						elif dataset['active'] != True:
@@ -1765,12 +1821,12 @@ set format y '%f'
 									dataset[sk] = "" 		
 
 						if dataset.keys().count('numprocs')==0 :
-							logger.error("Config file error"," Dataset of " + Log.bold(aname) + " found without 'numprocs'. This tag is mandatory!!!") 
-							logger.error("Please revise your configuration file !!!")
+							printer.error("Config file error"," Dataset of " + printer.bold(aname) + " found without 'numprocs'. This tag is mandatory!!!") 
+							printer.error("Please revise your configuration file !!!")
 							sys.exit(1)	
 						elif dataset.keys().count('outputs')==0 :
-							logger.error("Config file error"," Dataset of " + Log.bold(aname) + " found without 'outputs'. This tag is mandatory!!!") 
-							logger.error("Please revise your configuration file !!!")
+							printer.error("Config file error"," Dataset of " + printer.bold(aname) + " found without 'outputs'. This tag is mandatory!!!") 
+							printer.error("Please revise your configuration file !!!")
 							sys.exit(1)	
 								
 						break # step out 'a' loop		
@@ -1784,12 +1840,12 @@ set format y '%f'
 			for elem in elems:
 				if  elem.keys().count('name')==0 or \
 					elem.keys().count('active')==0:
-					logger.error("Config file error","'active' and 'name' are mandatory fields within item: " + mstr +" ... Skipping this entry")
+					printer.error("Config file error","'active' and 'name' are mandatory fields within item: " + mstr +" ... Skipping this entry")
 					self.elems.remove(elem)
 					repeat = True
 				else:
 					if elem['active'] and ( elem.keys().count('datasets')==0 or elem.keys().count('batch')==0  ):
-						logger.error("Config file Error"," 'datasets', and 'batch' fields are required for any active "+mstr+": " + Log.bold(elem['name']) + " ... Skipping this entry")
+						printer.error("Config file Error"," 'datasets', and 'batch' fields are required for any active "+mstr+": " + printer.bold(elem['name']) + " ... Skipping this entry")
 						self.elems.remove(elem)
 						repeat = True	
 										
@@ -1802,7 +1858,7 @@ set format y '%f'
 		"""Parse the yaml_conf structure and reads the configuration variables needed. Also do some basic correctness and sanity check"""	
 		# some basic error correctness
 		if yaml_conf.keys().count('KUBE') ==0:
-			logger.error("Config file error", "KUBE head tag is not defined") 
+			printer.error("Config file error", "KUBE head tag is not defined") 
 			sys.exit(1)	
 		if yaml_conf['KUBE'].keys().count("HOME") == 0 or \
 		   yaml_conf['KUBE'].keys().count("RUNS") == 0 or \
@@ -1810,7 +1866,7 @@ set format y '%f'
 		   yaml_conf['KUBE'].keys().count("TOOLS") == 0 or \
 		   yaml_conf['KUBE'].keys().count("BATCH") == 0 or \
 		   yaml_conf['KUBE'].keys().count("BENCH") == 0:
-			logger.error("Config file error","HOME, RUNS, RESULTS, TOOLS, BATCH and BENCH must be defined")
+			printer.error("Config file error","HOME, RUNS, RESULTS, TOOLS, BATCH and BENCH must be defined")
 			sys.exit(1)			
 
 		#######################################################################################
@@ -1819,7 +1875,7 @@ set format y '%f'
 		# set home
 		self.home = yaml_conf['KUBE']['HOME']['path']
 		if self.home == None: 
-			logger.error("Config file error","HOME must be defined")
+			printer.error("Config file error","HOME must be defined")
 			sys.exit(1) 
 
 		#set results
@@ -1844,29 +1900,29 @@ set format y '%f'
 		# set batchs
 		self.batchs = yaml_conf['KUBE']['BATCH']
 		if self.batchs==None:
-			logger.error("Config file error","at least one BATCH must be defined")
+			printer.error("Config file error","at least one BATCH must be defined")
 			sys.exit(1)	
 		# set absolute path to the scripts and do some error check
 		for nbatch in self.batchs:
 			if nbatch.keys().count('name')==0 or nbatch.keys().count('submit')==0:
-				logger.error("Config file error"," 'name' and 'submit' tags are mandatory in the BATCH" )
+				printer.error("Config file error"," 'name' and 'submit' tags are mandatory in the BATCH" )
 				sys.exit(1)
 			if nbatch['submit'] == None : 
-				logger.error("Config file error","'submit' tag in one of your BATCHs is empty")
+				printer.error("Config file error","'submit' tag in one of your BATCHs is empty")
 				sys.exit(1)	
 			if  nbatch['name'] != "MANUAL" and nbatch['name']!=None:
 				if  nbatch.keys().count('script')==0:
-					logger.error("Config file error"," 'script' tag is mandatory in an a BATCH unless you name it as 'MANUAL'")
+					printer.error("Config file error"," 'script' tag is mandatory in an a BATCH unless you name it as 'MANUAL'")
 					sys.exit(1)
 				if nbatch['script']!=None:
 					if re.match("[^/]",nbatch['script']):
 						nbatch['script'] = self.home + "/etc/" + nbatch['script']
 				else:
-					logger.error("Config file error","Missing 'script' in one of your non 'MANUAL' BATCHs")
+					printer.error("Config file error","Missing 'script' in one of your non 'MANUAL' BATCHs")
 					sys.exit(1)			
 			else:
 				if nbatch['name']==None or nbatch['name']=='':
-					logger.error("Config file error","Missing 'name' in one of your BATCHs")
+					printer.error("Config file error","Missing 'name' in one of your BATCHs")
 					sys.exit(1)	
 		
 		# Verify that the main tags ni BENCH section exist
@@ -1874,7 +1930,7 @@ set format y '%f'
 			(yaml_conf['KUBE']['BENCH'].keys().count('FILESYSTEMS') == 0) or \
 			(yaml_conf['KUBE']['BENCH'].keys().count('NETWORKS') == 0) or \
 			(yaml_conf['KUBE']['BENCH'].keys().count('SYNTHETICS') == 0) :		
-			logger.error("Config file error","'APPS','FILESYSTEMS','NETWORKS','SYNTHETICS' tags are mandatory inside BENCH")
+			printer.error("Config file error","'APPS','FILESYSTEMS','NETWORKS','SYNTHETICS' tags are mandatory inside BENCH")
 			sys.exit(1)	
 			
 		# and fill each one if them:	
@@ -1903,10 +1959,9 @@ set format y '%f'
 			print "I/O error({0}): {1}".format(e.errno, e.strerror)
 			sys.exit(e.errno)
 
-		print "\nUsing configuration file: ",
-		logger.plain( Log.bold(cfname) )
-		print "\n"
-
+		printer.info("\nUsing configuration file",  printer.bold(cfname) )
+		printer.info("")
+		
 		# global variable holding the configuration 
 		yaml_conf = yaml.load( stream )		
 		self.__readYaml(yaml_conf)
@@ -1931,8 +1986,8 @@ set format y '%f'
 	
 		dateexp = re.compile("\d\d\d\d-\d\d-\d\dT\d\dh\d\dm\d\ds")		
 		
-		logger.plain("**************************************************")	
-		logger.plain( "Removing old runs according to current policy of:\n" + Log.bold(str(self.runs_lifespan)) + " days"  )
+		printer.plain(printer.bold("**************************************************"))	
+		printer.plain( "Removing old runs according to current policy of:\n" + printer.bold(str(self.runs_lifespan)) + " days"  )
 		toRemove=[]
 		for d in dataset:
 			current = self.runs_dir + "/" + d
@@ -1952,9 +2007,9 @@ set format y '%f'
 		for e in toRemove:
 			if os.path.isdir(e):	
 				clean(e,True)
-				logger.warning( e)
+				#printer.warning( e)
 				elemsremoved=elemsremoved+1	
 				
-		#logger.plain( Log.bold(str(elemsremoved)) + " elements removed")
-		logger.plain("**************************************************")	
+		#printer.plain( printer.bold(str(elemsremoved)) + " elements removed")
+		printer.plain(printer.bold("**************************************************"))	
 								
