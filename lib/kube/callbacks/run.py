@@ -6,26 +6,37 @@ from kube.utils 	import *
 # Import core engine 
 from kube.engine	import KUBE
 
+import datetime
+
 def start( args ):
 	""" 
 		Entry point for the 'run' command.
 		Synopsis:
-		kube.py run [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS]
+		kube.py run [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS] [--log FILE]
 	"""
 
 	# create the engine instance
 	kube = KUBE()
 
+	opts = args.keys()
+	if 'log' in opts:
+		Printer.setLogfile(args['log'])
+		printer.plain("--------------------------------------------")
+		printer.info("Kube run on date",str(datetime.datetime.now()))
+		printer.plain("--------------------------------------------")
+		# remove the --log from the args
+		del ( args['log'] )	
+
 	if len( args.keys())==0:
 		# Run everything
 		kube.run()	
 	else:
-		opts = args.keys()
 		for o in opts:
-			what = o 
-			items = args[what].split(',')
-			if items[0].lower()=='all':
-				kube.run(what)	
-			else:
-				for i in items:
-					kube.run(what,i)
+			if o != 'log':
+				what = o 
+				items = args[what].split(',')
+				if items[0].lower()=='all':
+					kube.run(what)	
+				else:
+					for i in items:
+						kube.run(what,i)

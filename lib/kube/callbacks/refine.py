@@ -16,6 +16,15 @@ def start( args ):
 	# create the engine instance
 	kube = KUBE()
 	
+	opts = args.keys()
+	if 'log' in opts:
+		Printer.setLogfile(args['log'])
+		printer.plain("--------------------------------------------")
+		printer.info("Kube run on date",str(datetime.now()))
+		printer.plain("--------------------------------------------")
+		# remove the --log from the args
+		del ( args['log'] )	
+	
 	if len( args.keys())==0:
 		# refine every run 
 		kube.refine()	

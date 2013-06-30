@@ -230,7 +230,6 @@ class KUBE:
 	
 		of = open(template + "/.kanalysis.raw", 'w') 	
 		mnvalue = 0
-
 		for t in range(0,len(theta)):
 			lineout = metrics[t] + ' ' +  str(theta[t]) + ' ' 	
 			for l in range(0,len(radio)):
@@ -238,6 +237,7 @@ class KUBE:
 				if (nvalue>mnvalue):
 					mnvalue = nvalue  
 				lineout = lineout + str(nvalue) + ' '  # normalizar respecto al patron	
+
 			of.write(lineout + "\n")
 		of.flush()
 		of.close
@@ -254,8 +254,8 @@ set xtics axis
 set ytics axis 
 set grid polar
 set style fill solid 0.4
-#set term qt persist title 'KUBE'   font 'sans'
-set term x11 persist title 'KUBE'  font 'sans' 
+set term qt persist title 'KUBE'   font 'sans'
+#set term x11 persist title 'KUBE'  font 'sans' 
 	""") 
 		kf.write("set xrange[-"+ str(mnvalue+0.8) + ":"+ str(mnvalue+0.8) + "]\n")
 		kf.write("set yrange[-"+ str(mnvalue+0.8) + ":" + str(mnvalue+0.8) + "]\n")
@@ -307,7 +307,6 @@ set term x11 persist title 'KUBE'  font 'sans'
 		title_bench =  os.path.basename( os.path.dirname( title_dataset  ))	
 		title_dataset = os.path.basename(title_dataset)
 				
-
 		printer.info( "Reading data from", target ) 
 
 		if not os.path.isdir(target):
@@ -367,9 +366,9 @@ set term x11 persist title 'KUBE'  font 'sans'
 				if len(m[name])>3:
 					v_4 = m[name][4]
 					v_5 = m[name][5]
-					ofname[name][0].write( m[name][1] + ' ' + m[name][0] + ' ' + m[name][3] + ' ' + v_4  + ' ' + v_5 +  '\n' )
+					ofname[name][0].write( m[name][1].replace('T',"\\n") + ' ' + m[name][0] + ' ' + m[name][3] + ' ' + v_4  + ' ' + v_5 +  '\n' )
 				else:
-					ofname[name][0].write( m[name][1] + ' ' + m[name][0] +  '\n' )
+					ofname[name][0].write( m[name][1].replace('T',"\\n") + ' ' + m[name][0] +  '\n' )
 				ofname[name][1] =  m[name][2]
 				ofname[name][0].flush()
 
@@ -405,9 +404,11 @@ set xtics axis
 set ytics axis 
 set grid
 set style fill solid 0.4
-#set term qt persist size 1280,640 title 'KUBE'   font 'sans'
-set term x11 persist title 'KUBE'  font 'sans'
+set term qt persist size 1280,640 title 'KUBE'   font 'sans'
+#set term x11 persist title 'KUBE'  font 'sans'
 set format y '%f'	
+set bmargin 7
+set xtics rotate
 """)
 		if len(ofname.keys()) >1:	
 			for key in ofname.keys():		
@@ -432,7 +433,8 @@ set format y '%f'
 			# dummy plot to get the range...
 			kf.write( "plot '"+  target +"/." + key +".raw' u  1:3:xtic(2) , ''  u 1:4 \nymax=GPVAL_Y_MAX\nymin=GPVAL_Y_MIN\n")				
 	 		# now the plot
-			kf.write( "plot '" +  target +"/." + key+ ".raw' using 1:3:xtic(2) with linespoint lt rgb \"blue\"  lw 2 title \"" + key + "\", '' u 1:($5!='inf'?($5!='-inf'?$5:ymin):ymax):($6!='inf'?($6!='-inf'?$6:ymin):ymax) with filledcu fs transparent pattern 4 lt rgb \"green\"  notitle  ,'' u 1:($5!='inf'?($5!='-inf'?$5:ymin):ymax) with linespoint lw 2 lt rgb \'red\' notitle , '' u 1:($6!='inf'?($6!='-inf'?$6:ymin):ymax) with linespoint notitle lw 2 lt rgb \'red\',''  u 1:4 title 'reference' with linespoint lw 2 lt rgb \'green\'\n" )
+			#kf.write( "plot '" +  target +"/." + key+ ".raw' using 1:3:xtic(2) with linespoint lt rgb \"blue\"  lw 2 title \"" + key + "\", '' u 1:($5!='inf'?($5!='-inf'?$5:ymin):ymax):($6!='inf'?($6!='-inf'?$6:ymin):ymax) with filledcu fs transparent pattern 4 lt rgb \"green\"  notitle  ,'' u 1:($5!='inf'?($5!='-inf'?$5:ymin):ymax) with linespoint lw 2 lt rgb \'red\' notitle , '' u 1:($6!='inf'?($6!='-inf'?$6:ymin):ymax) with linespoint notitle lw 2 lt rgb \'red\',''  u 1:4 title 'reference' with linespoint lw 2 lt rgb \'green\'\n" )
+			kf.write( "plot '" +  target +"/." + key+ ".raw' using 1:3:xtic(2) with linespoint lt rgb \"blue\"  lw 2 title \"" + key + "\", '' u 1:($5!='inf'?($5!='-inf'?$5:ymin):ymax):($6!='inf'?($6!='-inf'?$6:ymin):ymax) with filledcu fs transparent solid 0.1 lt rgb \"green\"  notitle  ,'' u 1:($5!='inf'?($5!='-inf'?$5:ymin):ymax) with linespoint lw 2 lt rgb \'red\' notitle , '' u 1:($6!='inf'?($6!='-inf'?$6:ymin):ymax) with linespoint notitle lw 2 lt rgb \'red\',''  u 1:4 title 'reference' with linespoint lw 2 lt rgb \'green\'\n" )
 			# this would allow to make zoom the the window but for some reason, when the window is closed the process still waits for something from the system and hangs..
 			kf.write("pause -1\n")
 		
@@ -642,28 +644,31 @@ set format y '%f'
 		Printer.Level=Printer.Level+1
 		# Analyze every run which is not already been analyzed
 		if os.path.exists(rundir):
-			allruns = dict( [ [r,os.listdir(rundir+'/'+r)] for r in os.listdir(rundir) ])
-			# now remove the known failure dirs
-			repeat = True
-			while repeat and len(allruns.keys())!=0:
-				repeat = False
-				for k in allruns.keys():
-					for r in allruns[k]:
-						if re.match("INVALID_",r) !=	None or not os.path.isdir(rundir+'/'+k+'/'+r):
-							allruns[k].remove(r)		
-							repeat = True
-			# now remove already analyzed runs
-			for k in allruns.keys():
+			try:
+				allruns = dict( [ [r,os.listdir(rundir+'/'+r)] for r in os.listdir(rundir) ])
+				# now remove the known failure dirs
 				repeat = True
-				if k in allanalysis.keys():										
-					while repeat and len(allruns[k])!=0:
-						repeat = False
+				while repeat and len(allruns.keys())!=0:
+					repeat = False
+					for k in allruns.keys():
 						for r in allruns[k]:
-							if r in allanalysis[k]:
-								allruns[k].remove(r)
+							if re.match("INVALID_",r) !=	None or not os.path.isdir(rundir+'/'+k+'/'+r):
+								allruns[k].remove(r)		
 								repeat = True
-								break		
-
+				# now remove already analyzed runs
+				for k in allruns.keys():
+					repeat = True
+					if k in allanalysis.keys():										
+						while repeat and len(allruns[k])!=0:
+							repeat = False
+							for r in allruns[k]:
+								if r in allanalysis[k]:
+									allruns[k].remove(r)
+									repeat = True
+									break		
+			except:
+				pass
+				
 		# now remove from the list the runs that are still running ...
 		batch = self.__getBatchSystem(dataset)
 		if batch != None:
@@ -1959,8 +1964,8 @@ set format y '%f'
 			print "I/O error({0}): {1}".format(e.errno, e.strerror)
 			sys.exit(e.errno)
 
-		printer.info("\nUsing configuration file",  printer.bold(cfname) )
-		printer.info("")
+		printer.info("Using configuration file",  printer.bold(cfname) )
+		#printer.info("")
 		
 		# global variable holding the configuration 
 		yaml_conf = yaml.load( stream )		

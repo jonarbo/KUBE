@@ -51,7 +51,7 @@ def start( args ):
 				else:
 					delta = to - datetime(1973,05,02)
 			except Exception as x :
-				printer.error("Error","Possible wrong date format")
+				printer.error("Error!!! Possible wrong date format" , str(x))
 				return
 			kube.timeAnalysis(target,mname,to,delta)	
 		

@@ -15,9 +15,10 @@ kube.py <COMMAND> <OPTIONS>
 
 Some <OPTIONS> are specific to some <COMMANDS>: 
 -----------------------------------------------
-kube.py clean [-d {runs,results}] [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS] [--since SINCE] [--to TO]
-kube.py {view,run}  [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS]
-kube.py refine  [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS] [--since SINCE] [--to TO]
+kube.py clean   [-d {runs,results}] [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS] [--since SINCE] [--to TO]
+kube.py view    [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS]
+kube.py run     [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS] [--log FILE]
+kube.py refine  [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS] [--since SINCE] [--to TO] [--log FILE]
 kube.py probe {-t DIR [-m METRIC_NAME] [--since SINCE] [--to TO] , -k BASE_DIR [--target DIR]  [--since SINCE] [--to TO] }
 """		
 
@@ -33,7 +34,8 @@ optional arguments:
   -v, --version         show program's version number and exit
   --since SINCE         Option to set the initial time when needed
   --to TO               Option to set the end time when needed
-  -d {run,results}     Option to specify which directory is to be cleaned
+  --log FILE            Print out log information to FILE  
+  -d {run,results}      Option to specify which directory is to be cleaned
                         when the 'clean' command is used
   -a APPS               Option used to select which apps benchmark from the
                         config file will be processed. This option may accept
@@ -111,8 +113,9 @@ if __name__ == "__main__":
 
 	# options to set initial and end time when needed. The format is YYY-MM-DD
 	parser.add_argument("--since", help='Option to set the initial time when needed.' )
-	parser.add_argument("--to" ,  help='Option to set the end time when needed.')
-
+	parser.add_argument("--to" ,   help='Option to set the end time when needed.')
+	parser.add_argument("--log" ,  help='Append log information to file', dest='log')
+	
 	parser.add_argument("-d", choices=['runs','results'], help='Option to specify which directory is to be cleaned when the \'clean\' command is used' )
 
 	parser.add_argument("-a" , help='Option to select which apps benchmark from the config file will be processed. This option may accept a comma-separated list if multiple apps need to be selected. Use \'all\' to select everything. It is allowed in the following commands: \'run\', \'view\', \'refine\'', dest='apps')
@@ -131,9 +134,9 @@ if __name__ == "__main__":
 	# Associating commands with options ... 	
 	commands_opt={\
 					'clean':['d','since','to','apps','nets','filesys','synths'] ,\
-					'run':['apps','nets','filesys','synths'] ,\
-					'view':['apps','nets','filesys','synths'],\
-					'refine':['apps','nets','filesys','synths','since','to'] ,\
+					'run':['apps','nets','filesys','synths','log'] ,\
+					'view':['apps','nets','filesys','synths','log'],\
+					'refine':['apps','nets','filesys','synths','since','to','log'] ,\
 					'probe':['t','k'] ,\
 	}
 	# sub-options associated to options
