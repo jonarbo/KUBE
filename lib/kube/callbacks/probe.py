@@ -14,7 +14,7 @@ def start( args ):
 	""" 
 		Entry point for the 'probe' command.
 		Synopsis:
-		kube.py probe {-t DIR [-m METRIC_NAME] [--since SINCE] [--to TO] , -k BASE_DIR [--target DIR] [--since SINCE] [--to TO] }
+		kube.py probe {-t DIR [-m METRIC_NAME] [--since SINCE] [--to TO] , -b BASE_DIR [--target DIR] [--since SINCE] [--to TO] }
 	"""
 
 	# create the engine instance
@@ -58,12 +58,12 @@ def start( args ):
 		return
 		
 		
-	if 'k' in opts:
-		# Kiviat graph analysis
+	if 'b' in opts:
+		# metrics boxplot graph analysis
 		target = None
 
 		# get target dir	
-		template = args['k']
+		template = args['b']
 
 		# get the target dir
 		if 'target' in opts:
@@ -71,7 +71,7 @@ def start( args ):
 		
 		if not 'since' in opts and not 'to' in opts:
 			# call the fast method
-			kube.kiviat(template,target,to,to - datetime(1973,05,02))
+			kube.metricAnalysis(template,target,to,to - datetime(1973,05,02))
 		else:		
 			try:		
 				if args.keys().count('since') !=0 :
@@ -86,7 +86,7 @@ def start( args ):
 			except Exception as x :
 				printer.error("Error","Possible wrong date format")
 				return					
-			kube.kiviat(template,target,to,delta)	
+			kube.metricAnalysis(template,target,to,delta)	
 
 		return
 		

@@ -96,11 +96,11 @@ class KUBE:
 
 ####################################################################                                           
 #
-#	Visualization (Kiviat graph) functions
+#	Visualization (metrics bar plots) functions
 #
 #####################################################################  
-	def kiviat(self,template,target=None,to=None,delta=None):		
-		""" Shows a kiviat diagram for the specified template and target
+	def metricAnalysis(self,template,target=None,to=None,delta=None):		
+		""" Shows a box plot of the metrics for the specified template and target
 			Both arguments are directory path. The first is the path to the directory that holds the 
 			results for a specific run. This will be used as the reference value.
 			The second argument is also a path to a dir but now this dir can contain more dirs being each of 
@@ -121,17 +121,18 @@ class KUBE:
 			sys.exit(1)
 			
 		tf = open(template+"/analysis.raw", 'r') 
-		theta = []
-		radio = []
+		timestamp = []
+		m_values = []
 		metrics = []
 		legend = []
-		radio.append([])
+		m_values.append([])
 		tfc = tf.readline()
+		timestamp.append( tfc.split()[3] )
 		while tfc:		
 			line = tfc.split()
 			metrics.append(line[0])	
-			theta.append(line[2])
-			radio[0].append(line[3])
+			#timestamp.append(line[4])
+			m_values[0].append(line[2])
 			tfc = tf.readline()
 		tf.close
 
@@ -153,8 +154,8 @@ class KUBE:
 		title_dataset_template =  os.path.basename( os.path.dirname( title_runcase_template  ))	
 		title_app_template = os.path.basename( os.path.dirname( os.path.dirname(title_runcase_template )) )
 		title_runcase_template = os.path.basename(title_runcase_template)
-		#legend.append(os.path.basename(template))	
-		legend.append( title_app_template +","+ title_dataset_template   +","+ title_runcase_template)	
+		#legend.append( "Benchmark:"+title_app_template +" , Dataset:"+ title_dataset_template   +" , Run:"+ title_runcase_template)	
+		legend.append( title_dataset_template   +" => "+ title_runcase_template)	
 
 		u=[]
 		# filter directories by date
@@ -180,24 +181,28 @@ class KUBE:
 					title_dataset_target =  os.path.basename( os.path.dirname( title_runcase_target  ))	
 					title_app_target = os.path.basename( os.path.dirname( os.path.dirname(title_runcase_target )) )
 					title_runcase_target = os.path.basename(title_runcase_target)
-					#legend.append(os.path.basename(template))	
-					legend.append( title_app_target +","+ title_dataset_target   +","+ title_runcase_target)						
-					#legend.append(os.path.basename(target))	
+					#legend.append( "Benchmark:"+title_app_target +" , Dataset:"+ title_dataset_target   +" , Run:"+ title_runcase_target)						
+					legend.append( title_dataset_target   +" => "+ title_runcase_target)						
 					
 					if not os.path.exists(target+"/analysis.raw"):
 						printer.error("Data File not found","The file " + printer.bold( target+"/analysis.raw") + " could not be found" )
 						sys.exit(1)
 					tf = open(target+"/analysis.raw", 'r') 
 					ofc = tf.readline()
-					radio.append([])
+					m_values.append([])
 					while ofc:
 						line = ofc.split()
-						radio[len(radio)-1].append(line[3])
+						m_values[len(m_values)-1].append(line[2])
 						ofc = tf.readline()	
 					tf.close
 		else:
 			for file in u:
 				target = os.path.abspath(file)	
+				
+				# skip the template dir if present	
+				if target == template:
+					continue
+
 				title_rundate_target = os.path.basename(target)
 				title_runcase_target=''
 				if len(title_rundate_target)==0:
@@ -208,8 +213,9 @@ class KUBE:
 				title_dataset_target =  os.path.basename( os.path.dirname( title_runcase_target  ))	
 				title_app_target = os.path.basename( os.path.dirname( os.path.dirname(title_runcase_target )) )
 				title_runcase_target = os.path.basename(title_runcase_target)
-				legend.append( title_app_target +","+ title_dataset_target   +","+ title_runcase_target)						
-			
+				#legend.append( "Benchmark:" + title_app_target +" ==> Dataset:"+ title_dataset_target   +" ==> Run:"+ title_runcase_target)						
+				legend.append( title_dataset_target   +" => "+ title_runcase_target)						
+				
 				if os.path.isfile( file + "/analysis.raw"):
 					Printer.Level = 1
 					#printer.plain( printer.bold(file ) )
@@ -220,55 +226,54 @@ class KUBE:
 				
 					tf = open( file+"/analysis.raw", 'r') 
 					ofc = tf.readline()
-					radio.append([])
+					m_values.append([])
 					#legend.append(os.path.basename(file))
+					timestamp.append( ofc.split()[3] )
 					while ofc:
 						line = ofc.split()
-						radio[len(radio)-1].append(line[3])
+						m_values[len(m_values)-1].append(line[2])
 						ofc = tf.readline()	
 					tf.close
 	
-		of = open(template + "/.kanalysis.raw", 'w') 	
+		of = open(template + "/.metrics_analysis.raw", 'w') 	
 		mnvalue = 0
-		for t in range(0,len(theta)):
-			lineout = metrics[t] + ' ' +  str(theta[t]) + ' ' 	
-			for l in range(0,len(radio)):
-				nvalue = float(radio[l][t])/float(radio[0][t])			
-				if (nvalue>mnvalue):
-					mnvalue = nvalue  
-				lineout = lineout + str(nvalue) + ' '  # normalizar respecto al patron	
-
-			of.write(lineout + "\n")
+# 		of.write("metrics ")
+# 		for e in timestamp:
+# 			of.write( e  + " ")
+# 		of.write("\n")
+ 		for t in range(0,len(metrics)):			
+ 			lineout = metrics[t] + ' ' 
+ 			for l in range(0,len(m_values)):
+ 				nvalue = float(m_values[l][t])/float(m_values[0][t])			
+ 				if (nvalue>mnvalue):
+ 					mnvalue = nvalue  
+ 				#lineout = lineout +  str(timestamp[l]) + ' ' 	+ str(nvalue) + ' '  # normalizar respecto al patron	
+				lineout = lineout +  str(nvalue) + ' '  # normalizar respecto al patron	
+			
+			of.write(lineout  + "\n")
 		of.flush()
 		of.close
-		
+	
 		# create gnuplot file
-		gnuplotfile = template + "/.kiviat.gnuplot"
+		gnuplotfile = template + "/.metrics.gnuplot"
 		kf = open(gnuplotfile,'w')
 		kf.write(
 		"""
-set clip points
-unset border
-set polar
-set xtics axis 
-set ytics axis 
-set grid polar
-set style fill solid 0.4
+set boxwidth 0.9 relative
+set style data histograms
+set style histogram cluster
+#set key autotitle columnhead
+set style fill solid 0.2 border lt -1
+set grid
 set term qt persist title 'KUBE'   font 'sans'
 #set term x11 persist title 'KUBE'  font 'sans' 
-	""") 
-		kf.write("set xrange[-"+ str(mnvalue+0.8) + ":"+ str(mnvalue+0.8) + "]\n")
-		kf.write("set yrange[-"+ str(mnvalue+0.8) + ":" + str(mnvalue+0.8) + "]\n")
-		#kf.write( " set title \"Some title here\" ")
-		for t in range(0,len(theta)):
-			xpos = mnvalue*math.cos(float(theta[t]))
-			ypos = mnvalue*math.sin(float(theta[t]))
-			kf.write("set label '" + metrics[t] + "' at " + str(xpos) + "," + str(ypos) + " front font \"Sans,14\"\n")	
-					
-		plotstr = "plot '" + template + "/.kanalysis.raw' using 2:3 with linespoints title \"" + legend[0] + "\""	
-		for l in range(4,len(radio)+3):
-			plotstr = plotstr + " , '"+ template +"/.kanalysis.raw' using 2:" + str(l) + " with  linespoints title \"" + legend[l-3] +"\""  
-	
+""") 
+#		plotstr = "plot '" + template + "/.metrics_analysis.raw' every ::1 using 2:xtic(1) title '" + legend[0]+ " Date: " + timestamp[0] +"' "
+#		plotstr = plotstr +  ", for [n=3:"+ str(len(m_values)+1) + "]  '' u (column(n)) title columnhead(n) " 
+		plotstr = "plot '" + template + "/.metrics_analysis.raw' using 2:xtic(1) title '" + legend[0]+ " => " + timestamp[0] +"' "
+		for n in range(3,len(m_values)+2):
+			plotstr = plotstr +  ", '' u " + str(n) + " title '" + legend[n-2]+ " => " + timestamp[n-2] +"' "
+
 		kf.write( plotstr )
 		kf.write("\npause -1\n")
 		kf.flush()
@@ -340,10 +345,10 @@ set term qt persist title 'KUBE'   font 'sans'
 				while ofc:
 					line = ofc.split()
 					if metric_names==None or ( metric_names!=None and line[0] in metric_names ): 
-						if len(line)>5:
-							metrics[len(metrics)-1][line[0]] = ( line[3],line[4],line[1],line[5],line[6],line[7] ) 
+						if len(line)>4:
+							metrics[len(metrics)-1][line[0]] = ( line[2],line[3],line[1],line[4],line[5],line[6] ) 
 						else:
-							metrics[len(metrics)-1][line[0]] = ( line[3],line[4],line[1] ) 
+							metrics[len(metrics)-1][line[0]] = ( line[2],line[3],line[1] ) 
 					ofc = tf.readline()
 				if len( metrics[len(metrics)-1]) == 0:
 					metrics.pop()	
@@ -403,7 +408,7 @@ unset border
 set xtics axis 
 set ytics axis 
 set grid
-set style fill solid 0.4
+set style fill solid 0.2
 set term qt persist size 1280,640 title 'KUBE'   font 'sans'
 #set term x11 persist title 'KUBE'  font 'sans'
 set format y '%f'	
@@ -423,7 +428,7 @@ set xtics rotate
 				splotstr = splotstr + "set title \'"+ key + "\'\n"  # "\' font \'Bold\'\n"
 				splotstr = splotstr + "set ylabel \'"+ ofname[key][1]  +"\'\n" 
 		 		# now the plot
-				splotstr = splotstr + "plot '" +  target +"/." + key + ".raw' using  1:3:xtic(2) with linespoint lt rgb \"blue\"  lw 2 title \"" + key + "\", '' u 1:($5!='inf'?($5!='-inf'?$5:ymin_"+key+"):ymax_"+key+") with linespoint lw 2 lt rgb \'red\' notitle , '' u 1:($6!='inf'?($6!='-inf'?$6:ymin_"+key+"):ymax_"+key+") with linespoint notitle lw 2 lt rgb \'red\',''  u 1:4 title 'reference' with linespoint lw 2 lt rgb \'green\'\n" 
+				splotstr = splotstr + "plot '" +  target +"/." + key + ".raw' using  1:3:xtic(2) with linespoint lt rgb \"blue\"  lw 2 title \"" + key + "\", '' u 1:($5!='inf'?($5!='-inf'?$5:ymin_"+key+"):ymax_"+key+") with linespoint lw 2 lt \'dotted\' lc rgb \'orange\' notitle , '' u 1:($6!='inf'?($6!='-inf'?$6:ymin_"+key+"):ymax_"+key+") with linespoint notitle lw 2 lt \'dotted\' lc rgb \'orange\',''  u 1:4 title 'reference' with linespoint lw 2 lt rgb \'green\'\n" 
 
 			kf.write( splotstr )
 			kf.write( "\nunset multiplot\n")
@@ -434,7 +439,7 @@ set xtics rotate
 			kf.write( "plot '"+  target +"/." + key +".raw' u  1:3:xtic(2) , ''  u 1:4 \nymax=GPVAL_Y_MAX\nymin=GPVAL_Y_MIN\n")				
 	 		# now the plot
 			#kf.write( "plot '" +  target +"/." + key+ ".raw' using 1:3:xtic(2) with linespoint lt rgb \"blue\"  lw 2 title \"" + key + "\", '' u 1:($5!='inf'?($5!='-inf'?$5:ymin):ymax):($6!='inf'?($6!='-inf'?$6:ymin):ymax) with filledcu fs transparent pattern 4 lt rgb \"green\"  notitle  ,'' u 1:($5!='inf'?($5!='-inf'?$5:ymin):ymax) with linespoint lw 2 lt rgb \'red\' notitle , '' u 1:($6!='inf'?($6!='-inf'?$6:ymin):ymax) with linespoint notitle lw 2 lt rgb \'red\',''  u 1:4 title 'reference' with linespoint lw 2 lt rgb \'green\'\n" )
-			kf.write( "plot '" +  target +"/." + key+ ".raw' using 1:3:xtic(2) with linespoint lt rgb \"blue\"  lw 2 title \"" + key + "\", '' u 1:($5!='inf'?($5!='-inf'?$5:ymin):ymax):($6!='inf'?($6!='-inf'?$6:ymin):ymax) with filledcu fs transparent solid 0.1 lt rgb \"green\"  notitle  ,'' u 1:($5!='inf'?($5!='-inf'?$5:ymin):ymax) with linespoint lw 2 lt rgb \'red\' notitle , '' u 1:($6!='inf'?($6!='-inf'?$6:ymin):ymax) with linespoint notitle lw 2 lt rgb \'red\',''  u 1:4 title 'reference' with linespoint lw 2 lt rgb \'green\'\n" )
+			kf.write( "plot '" +  target +"/." + key+ ".raw' using 1:3:xtic(2) with linespoint lt rgb \"blue\"  lw 2 title \"" + key + "\", '' u 1:($5!='inf'?($5!='-inf'?$5:ymin):ymax):($6!='inf'?($6!='-inf'?$6:ymin):ymax) with filledcu fs transparent solid 0.1 lt rgb \"green\"  notitle  ,'' u 1:($5!='inf'?($5!='-inf'?$5:ymin):ymax) with linespoint lw 4 lt \'dotted\' lc rgb \'green\' notitle , '' u 1:($6!='inf'?($6!='-inf'?$6:ymin):ymax) with linespoint notitle lw 4 lt \'dotted\' lc rgb \'green\',''  u 1:4 title 'reference' with linespoint lw 2 lt rgb \'green\'\n" )
 			# this would allow to make zoom the the window but for some reason, when the window is closed the process still waits for something from the system and hangs..
 			kf.write("pause -1\n")
 		
@@ -645,7 +650,7 @@ set xtics rotate
 		# Analyze every run which is not already been analyzed
 		if os.path.exists(rundir):
 			try:
-				allruns = dict( [ [r,os.listdir(rundir+'/'+r)] for r in os.listdir(rundir) ])
+				allruns = dict( [ [r,os.listdir(rundir+'/'+r)] for r in os.listdir(rundir) if os.path.isdir(rundir+'/'+r)])
 				# now remove the known failure dirs
 				repeat = True
 				while repeat and len(allruns.keys())!=0:
@@ -666,7 +671,8 @@ set xtics rotate
 									allruns[k].remove(r)
 									repeat = True
 									break		
-			except:
+			except Exception as e:
+				print e
 				pass
 				
 		# now remove from the list the runs that are still running ...
@@ -804,8 +810,8 @@ set xtics rotate
 				r = open( rd +"/"+i + "/analysis.raw","w")
 				o.write(  "\"metric\",\"value\",\"units\",\"reference\",\"accuracy (%)\",\"validation\"\n" )
 				STEP =  END/len(dataset['metrics'])	
-				theta = frange(START,END,STEP)		
-				radio = []
+				#theta = frange(START,END,STEP)		
+				m_values = []
 				metrics = []
 				ref_value_a = []
 				units_a = []
@@ -938,7 +944,7 @@ set xtics rotate
 								threshold_a_l.append('')
 								threshold_a_u.append('')
 						
-							radio.append ( command_value )				
+							m_values.append ( command_value )				
 							ref_value_a.append(ref_value)
 							metrics.append( name )
 							if len(units)!=0:
@@ -950,13 +956,12 @@ set xtics rotate
 				o.flush()
 				o.close
 				
-				sort_dict = zip(metrics, units_a ,theta, radio, ref_value_a)		
-				sort_dict = zip(metrics, units_a ,theta, radio, ref_value_a, threshold_a_u, threshold_a_l )		
+				sort_dict = zip(metrics, units_a , m_values, ref_value_a, threshold_a_u, threshold_a_l )		
 				if sort_dict:
 					for k in sort_dict:
-						r.write( str(k[0]) + "  " + str(k[1])  + "  "  + str(k[2]) + "  "  + str(k[3]) + "  " + timestamp  + "  " + str(k[4]) + "  " + str(k[5]) + "  " + str(k[6]) + "\n"  )
+						r.write( str(k[0]) + "  " + str(k[1])  + "  "  + str(k[2]) + "  "  + timestamp + "  " + str(k[3])  + "  " + str(k[4]) + "  " + str(k[5]) + "\n"  )
 			
-					r.write( str(sort_dict[0][0]) + "  " + str(sort_dict[0][1]) + "  "  + str(sort_dict[0][2]) + "  "  + str(sort_dict[0][3]) + "  " + timestamp   + "  " + str(sort_dict[0][4]) + "  " + str(sort_dict[0][5]) + "  " + str(sort_dict[0][6]) + "\n"  )
+					# r.write( str(sort_dict[0][0]) + "  " + str(sort_dict[0][1]) + "  "  + str(sort_dict[0][2]) + "  "  + str(sort_dict[0][3]) + "  " + timestamp   + "  " + str(sort_dict[0][4]) + "  " + str(sort_dict[0][5]) + "  " + str(sort_dict[0][6]) + "\n"  )
 				r.flush
 				r.close		
 				os.chdir( resultsdir )

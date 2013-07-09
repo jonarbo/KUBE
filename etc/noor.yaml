@@ -103,8 +103,8 @@ KUBE:
                 active: true
                 args: nucleosome146Katoms.namd  > nucleosome.out  2>nucleosome.err
                 outputs:  
-                   output: nucleosome.out                      
-                   outref: nucleosome.ref
+                   output: nucleosome.out
+                   #outref: nucleosome.ref
                    another_output: KUBE_%NAME%_%NUMPROCS%.out          
     
               - name: namd_apoa1  

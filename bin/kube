@@ -19,7 +19,7 @@ kube.py clean   [-d {runs,results}] [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS]
 kube.py view    [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS]
 kube.py run     [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS] [--log FILE]
 kube.py refine  [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS] [--since SINCE] [--to TO] [--log FILE]
-kube.py probe {-t DIR [-m METRIC_NAME] [--since SINCE] [--to TO] , -k BASE_DIR [--target DIR]  [--since SINCE] [--to TO] }
+kube.py probe {-t DIR [-m METRIC_NAME] [--since SINCE] [--to TO] , -b BASE_DIR [--target DIR]  [--since SINCE] [--to TO] }
 """		
 
 		self.help=\
@@ -67,9 +67,9 @@ optional arguments:
   -m METRIC_NAME        For the time analysis one or more metrics can be
                         selected using this option. A comma-separated list is
                         used for multiple metrics selection
-  -k DIR                Option to be used with the 'probe' command to select the
-                        Kiviat graph analysis
-  --target DIR          For the Kiviat graph analysis you may want to specify a dir 
+  -b BASE_DIR           Option to be used with the 'probe' command to select the
+                        box plot metrics graph analysis
+  --target DIR          For the metrics graph analysis you may want to specify a dir 
                         path which contains one or many runs information to compare
                         against the base dir provided with -k option. This target dir
                         could be either a dir containing a single run for a specific
@@ -126,8 +126,8 @@ if __name__ == "__main__":
 	parser.add_argument("-t" , help='Option to be used with the \'probe\' command to select the time analysis. The value expected is the path to the dir containing the post-processed runs', dest='t')
 	parser.add_argument("-m" , help='For the time analysis one or more metrics can be selected using this option. A comma-separated list is used for multiple metrics selection', dest='metric_name')
 
-	parser.add_argument("-k" , help='Option to be used with the \'probe\' command to select the Kiviat graph analysis',dest='k')
-	parser.add_argument("--target" , help='For the Kiviat graph analysis, select the target dir',dest='target')
+	parser.add_argument("-b" , help='Option to be used with the \'probe\' command to select the metrics graph analysis',dest='b')
+	parser.add_argument("--target" , help='For the metrics graph analysis, select the target dir',dest='target')
 	
 	args = parser.parse_args()
 	
@@ -137,10 +137,10 @@ if __name__ == "__main__":
 					'run':['apps','nets','filesys','synths','log'] ,\
 					'view':['apps','nets','filesys','synths','log'],\
 					'refine':['apps','nets','filesys','synths','since','to','log'] ,\
-					'probe':['t','k'] ,\
+					'probe':['t','b'] ,\
 	}
 	# sub-options associated to options
-	sub_opts= { 't':['metric_name','since','to'],'k':['target','since','to'] }
+	sub_opts= { 't':['metric_name','since','to'],'b':['target','since','to'] }
 		
 	# get which command was invoked
 	command = args.command
@@ -150,8 +150,8 @@ if __name__ == "__main__":
 	# Do the check if the command was invoked with the accepted options
 	accepted_opts = commands_opt[command] 
 
-	# 't' and 'k' can not be together with 'probe' command	
-	if command == 'probe' and options_dict.keys().count('t')!=0  and options_dict.keys().count('k')!=0:
+	# 't' and 'b' can not be together with 'probe' command	
+	if command == 'probe' and options_dict.keys().count('t')!=0  and options_dict.keys().count('b')!=0:
 			print "-----------------------------------" 
 			print "wrong options given to the command: \'" + command +"\'"
 			print 

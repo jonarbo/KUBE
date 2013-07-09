@@ -82,8 +82,7 @@ def start( args ):
 	else:
 		delta = to - datetime(1973,05,02)
 		since = 'origin'
-		
-		
+				
 	if 	args.keys().count('apps') == 0 and  \
 		args.keys().count('nets') == 0 and  \
 		args.keys().count('filesys') == 0 and  \
