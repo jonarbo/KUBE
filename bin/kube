@@ -19,7 +19,7 @@ kube.py clean   [-d {runs,results}] [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS]
 kube.py view    [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS]
 kube.py run     [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS] [--log FILE]
 kube.py refine  [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS] [--since SINCE] [--to TO] [--log FILE]
-kube.py probe {-t DIR [-m METRIC_NAME] [--since SINCE] [--to TO] , -b BASE_DIR [--target DIR]  [--since SINCE] [--to TO] }
+kube.py probe   {-t DIR [-m METRIC_NAME] [--since SINCE] [--to TO] , -b BASE_DIR [--target DIR] [-m METRIC_NAME] { [--since SINCE] [--to TO] , [--at DATE] } }
 """		
 
 		self.help=\
@@ -34,6 +34,7 @@ optional arguments:
   -v, --version         show program's version number and exit
   --since SINCE         Option to set the initial time when needed
   --to TO               Option to set the end time when needed
+  --at DATE				Option to select a specific date when needed
   --log FILE            Print out log information to FILE  
   -d {run,results}      Option to specify which directory is to be cleaned
                         when the 'clean' command is used
@@ -64,7 +65,7 @@ optional arguments:
   -t DIR                Option to be used with the 'probe' command to select the
                         time analysis. The value expected is the path to the
                         dir containing the post-processed runs
-  -m METRIC_NAME        For the time analysis one or more metrics can be
+  -m METRIC_NAME        For the time and metrics analysis one or more metrics can be
                         selected using this option. A comma-separated list is
                         used for multiple metrics selection
   -b BASE_DIR           Option to be used with the 'probe' command to select the
@@ -114,6 +115,8 @@ if __name__ == "__main__":
 	# options to set initial and end time when needed. The format is YYY-MM-DD
 	parser.add_argument("--since", help='Option to set the initial time when needed.' )
 	parser.add_argument("--to" ,   help='Option to set the end time when needed.')
+	parser.add_argument("--at" ,   help='Option to set a specific date when needed.')
+	
 	parser.add_argument("--log" ,  help='Append log information to file', dest='log')
 	
 	parser.add_argument("-d", choices=['runs','results'], help='Option to specify which directory is to be cleaned when the \'clean\' command is used' )
@@ -140,7 +143,7 @@ if __name__ == "__main__":
 					'probe':['t','b'] ,\
 	}
 	# sub-options associated to options
-	sub_opts= { 't':['metric_name','since','to'],'b':['target','since','to'] }
+	sub_opts= { 't':['metric_name','since','to'],'b':['metric_name','target','since','to','at'] }
 		
 	# get which command was invoked
 	command = args.command
@@ -152,6 +155,14 @@ if __name__ == "__main__":
 
 	# 't' and 'b' can not be together with 'probe' command	
 	if command == 'probe' and options_dict.keys().count('t')!=0  and options_dict.keys().count('b')!=0:
+			print "-----------------------------------" 
+			print "wrong options given to the command: \'" + command +"\'"
+			print 
+			parser.print_usage()
+			sys.exit(1)
+
+	# 'since' and 'to' can't be given along with 'at'
+	if command == 'probe' and  (( options_dict.keys().count('since')!=0  or options_dict.keys().count('to')!=0 ) and  options_dict.keys().count('at')!=0):
 			print "-----------------------------------" 
 			print "wrong options given to the command: \'" + command +"\'"
 			print 

@@ -61,24 +61,35 @@ def start( args ):
 	if 'b' in opts:
 		# metrics boxplot graph analysis
 		target = None
+		mname=None
+		at = None
 
 		# get target dir	
 		template = args['b']
 
+		# get the list of the metrics
+		if 'metric_name' in opts:
+			mname  = args['metric_name'].split(',')
+
 		# get the target dir
 		if 'target' in opts:
-				target  = args['target']
+			target  = args['target']
+				
+		# get the exact date if exists
+		if 'at' in opts:
+			since  = parser.parse(args['at'])
+			to = since
 		
-		if not 'since' in opts and not 'to' in opts:
+		if not 'since' in opts and not 'to' in opts and not 'at' in opts:
 			# call the fast method
-			kube.metricAnalysis(template,target,to,to - datetime(1973,05,02))
+			kube.metricAnalysis(template,target,to,to - datetime(1973,05,02),mname)
 		else:		
 			try:		
 				if args.keys().count('since') !=0 :
 					since=parser.parse(args['since'])
 				if args.keys().count('to') !=0 :
 					to=parser.parse(args['to'])
-	
+		
 				if since:
 					delta = to-since
 				else:
@@ -86,7 +97,7 @@ def start( args ):
 			except Exception as x :
 				printer.error("Error","Possible wrong date format")
 				return					
-			kube.metricAnalysis(template,target,to,delta)	
+			kube.metricAnalysis(template,target,to,delta,mname)	
 
 		return
 		

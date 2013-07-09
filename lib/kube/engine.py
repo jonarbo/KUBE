@@ -99,7 +99,7 @@ class KUBE:
 #	Visualization (metrics bar plots) functions
 #
 #####################################################################  
-	def metricAnalysis(self,template,target=None,to=None,delta=None):		
+	def metricAnalysis(self,template,target=None,to=None,delta=None, lmetrics=None):		
 		""" Shows a box plot of the metrics for the specified template and target
 			Both arguments are directory path. The first is the path to the directory that holds the 
 			results for a specific run. This will be used as the reference value.
@@ -125,14 +125,17 @@ class KUBE:
 		m_values = []
 		metrics = []
 		legend = []
+		units = []
 		m_values.append([])
 		tfc = tf.readline()
 		timestamp.append( tfc.split()[3] )
 		while tfc:		
 			line = tfc.split()
-			metrics.append(line[0])	
-			#timestamp.append(line[4])
-			m_values[0].append(line[2])
+			if lmetrics==None or line[0] in lmetrics:
+				metrics.append(line[0])	
+				units.append(line[1])
+				#timestamp.append(line[4])
+				m_values[0].append(line[2])							
 			tfc = tf.readline()
 		tf.close
 
@@ -156,13 +159,13 @@ class KUBE:
 		title_runcase_template = os.path.basename(title_runcase_template)
 		#legend.append( "Benchmark:"+title_app_template +" , Dataset:"+ title_dataset_template   +" , Run:"+ title_runcase_template)	
 		legend.append( title_dataset_template   +" => "+ title_runcase_template)	
-
+		
 		u=[]
 		# filter directories by date
 		if target and os.path.isdir(target):
 			for d  in walkDir(target , to, delta):
 				u.append(d)
-
+		
 		if len(u) == 0 :
 			if target:	
 				#printer.plain("Reading data from target:")
@@ -192,13 +195,14 @@ class KUBE:
 					m_values.append([])
 					while ofc:
 						line = ofc.split()
-						m_values[len(m_values)-1].append(line[2])
+						if lmetrics == None or  line[0] in lmetrics:
+							m_values[len(m_values)-1].append(line[2])
 						ofc = tf.readline()	
 					tf.close
 		else:
 			for file in u:
 				target = os.path.abspath(file)	
-				
+
 				# skip the template dir if present	
 				if target == template:
 					continue
@@ -229,28 +233,31 @@ class KUBE:
 					m_values.append([])
 					#legend.append(os.path.basename(file))
 					timestamp.append( ofc.split()[3] )
+
 					while ofc:
 						line = ofc.split()
-						m_values[len(m_values)-1].append(line[2])
+						if lmetrics == None or line[0] in lmetrics :
+							m_values[len(m_values)-1].append(line[2])
 						ofc = tf.readline()	
 					tf.close
-	
+			
 		of = open(template + "/.metrics_analysis.raw", 'w') 	
 		mnvalue = 0
-# 		of.write("metrics ")
-# 		for e in timestamp:
-# 			of.write( e  + " ")
-# 		of.write("\n")
- 		for t in range(0,len(metrics)):			
- 			lineout = metrics[t] + ' ' 
- 			for l in range(0,len(m_values)):
- 				nvalue = float(m_values[l][t])/float(m_values[0][t])			
- 				if (nvalue>mnvalue):
- 					mnvalue = nvalue  
- 				#lineout = lineout +  str(timestamp[l]) + ' ' 	+ str(nvalue) + ' '  # normalizar respecto al patron	
-				lineout = lineout +  str(nvalue) + ' '  # normalizar respecto al patron	
-			
+		
+		if len(metrics)>1:
+			for t in range(0,len(metrics)):			
+				lineout = metrics[t] + '\\n'+ str( str(float(m_values[0][t]))) + '\\n' + units[t] + ' ' +  str(float(m_values[0][t])) + ' ' 
+				for l in range(0,len(m_values)):
+					nvalue = float(m_values[l][t])/float(m_values[0][t])			
+					lineout = lineout +  str(nvalue) + ' '  # normalizar respecto al patron			
+				of.write(lineout  + "\n")
+		else:
+			lineout = metrics[0] + '\\n'+ str( str(float(m_values[0][0]))) + '\\n' + units[0] + ' ' +  str(float(m_values[0][0])) + ' ' 
+			for l in range(0,len(m_values)):
+				nvalue = float(m_values[l][0])
+				lineout = lineout +  str(nvalue) + ' ' 		
 			of.write(lineout  + "\n")
+							
 		of.flush()
 		of.close
 	
@@ -265,14 +272,15 @@ set style histogram cluster
 #set key autotitle columnhead
 set style fill solid 0.2 border lt -1
 set grid
+set bmargin 5
 set term qt persist title 'KUBE'   font 'sans'
 #set term x11 persist title 'KUBE'  font 'sans' 
 """) 
 #		plotstr = "plot '" + template + "/.metrics_analysis.raw' every ::1 using 2:xtic(1) title '" + legend[0]+ " Date: " + timestamp[0] +"' "
 #		plotstr = plotstr +  ", for [n=3:"+ str(len(m_values)+1) + "]  '' u (column(n)) title columnhead(n) " 
-		plotstr = "plot '" + template + "/.metrics_analysis.raw' using 2:xtic(1) title '" + legend[0]+ " => " + timestamp[0] +"' "
-		for n in range(3,len(m_values)+2):
-			plotstr = plotstr +  ", '' u " + str(n) + " title '" + legend[n-2]+ " => " + timestamp[n-2] +"' "
+		plotstr = "plot '" + template + "/.metrics_analysis.raw' using 3:xtic(1) title '" + legend[0]+ " => " + timestamp[0] +"' "
+		for n in range(4,len(m_values)+3):
+			plotstr = plotstr +  ", '' u " + str(n) + " title '" + legend[n-3]+ " => " + timestamp[n-3] +"' "
 
 		kf.write( plotstr )
 		kf.write("\npause -1\n")

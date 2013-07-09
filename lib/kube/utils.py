@@ -67,8 +67,8 @@ def walkDir(dir,to=None,delta=None):
 	for dirname, dirnames, file in os.walk(dir):
 		for  subdirname in dirnames:
 			dname = os.path.join(dirname, subdirname) 		
-			if to and delta:
-				try:			
+			if to!=None and delta!=None:
+				try:						
 					td = to-parser.parse( os.path.basename(dname) )
 					if td>=timedelta(0) and td<=delta :
 						yield dname
