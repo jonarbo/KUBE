@@ -99,7 +99,7 @@ class KUBE:
 #	Visualization (metrics bar plots) functions
 #
 #####################################################################  
-	def metricAnalysis(self,template,target=None,to=None,delta=None, lmetrics=None):		
+	def metricAnalysis(self,template,target=None,printToSTDOUT=False,to=None,delta=None, lmetrics=None):		
 		""" Shows a box plot of the metrics for the specified template and target
 			Both arguments are directory path. The first is the path to the directory that holds the 
 			results for a specific run. This will be used as the reference value.
@@ -240,10 +240,19 @@ class KUBE:
 							m_values[len(m_values)-1].append(line[2])
 						ofc = tf.readline()	
 					tf.close
-			
+
+		if printToSTDOUT:
+			mnvalue = 0
+			if len(metrics)>1:
+				for t in range(0,len(metrics)):			
+					printer.info("Metric",metrics[t])
+					for l in range(0,len(m_values)):
+						nvalue = float(m_values[l][t])			
+						printer.plain( legend[l]+ " => " + timestamp[l] + " "  +  str(nvalue) )
+			return		
+
 		of = open(template + "/.metrics_analysis.raw", 'w') 	
 		mnvalue = 0
-		
 		if len(metrics)>1:
 			for t in range(0,len(metrics)):			
 				lineout = metrics[t] + '\\n'+ str( str(float(m_values[0][t]))) + '\\n' + units[t] + ' ' +  str(float(m_values[0][t])) + ' ' 
@@ -295,7 +304,7 @@ set term qt persist title 'KUBE'   font 'sans'
 #	Display time evolution of the metrics
 #
 #####################################################################  
-	def timeAnalysis(self,target,metric_names,to=None,delta=None):		
+	def timeAnalysis(self,target,metric_names,printToSTDOUT=False,to=None,delta=None):		
 		""" Shows the time evolution of the metrics found in the 'target' dir.
 			'target' must contain a list of directories created 
 			in the postprocess stage that contain the analysis.raw file.
@@ -372,6 +381,25 @@ set term qt persist title 'KUBE'   font 'sans'
 			return
 	
 		ofname={}
+		if printToSTDOUT:
+			while len(metrics)>0:
+				mname = None
+				for me in metrics:
+					if len(me.keys()) == 0:
+						return
+					if  mname == None:
+						mname = me.keys()[0]
+ 						printer.info("Metric",str(mname))					
+					if len(me[mname])>3 :
+						v_4 = me[mname][4]
+						v_5 = me[mname][5]
+						printer.plain( me[mname][1] + ' ' +me[mname][0] + ' ' + me[mname][3] + ' ' + v_4  + ' ' + v_5 )
+					else:
+						printer.plain( me[mname][1] + ' ' + me[mname][0] )					
+					del me[mname]
+				mname = None
+			return			
+		
 		for m in metrics:
 			for name in m.keys():
 				if ofname.keys().count(name) == 0:

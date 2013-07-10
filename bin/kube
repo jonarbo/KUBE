@@ -19,7 +19,8 @@ kube.py clean   [-d {runs,results}] [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS]
 kube.py view    [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS]
 kube.py run     [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS] [--log FILE]
 kube.py refine  [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS] [--since SINCE] [--to TO] [--log FILE]
-kube.py probe   {-t DIR [-m METRIC_NAME] [--since SINCE] [--to TO] , -b BASE_DIR [--target DIR] [-m METRIC_NAME] { [--since SINCE] [--to TO] , [--at DATE] } }
+kube.py probe   -t DIR [-p] [-m METRIC_NAMES] [--since SINCE] [--to TO] 
+kube.py probe   -b BASE_DIR [-p] [--target DIR] [-m METRIC_NAMES] { [--since SINCE] [--to TO] , [--at DATE] } }
 """		
 
 		self.help=\
@@ -34,7 +35,7 @@ optional arguments:
   -v, --version         show program's version number and exit
   --since SINCE         Option to set the initial time when needed
   --to TO               Option to set the end time when needed
-  --at DATE				Option to select a specific date when needed
+  --at DATE             Option to select a specific date when needed
   --log FILE            Print out log information to FILE  
   -d {run,results}      Option to specify which directory is to be cleaned
                         when the 'clean' command is used
@@ -65,7 +66,7 @@ optional arguments:
   -t DIR                Option to be used with the 'probe' command to select the
                         time analysis. The value expected is the path to the
                         dir containing the post-processed runs
-  -m METRIC_NAME        For the time and metrics analysis one or more metrics can be
+  -m METRIC_NAMES       For the time and metrics analysis one or more metrics can be
                         selected using this option. A comma-separated list is
                         used for multiple metrics selection
   -b BASE_DIR           Option to be used with the 'probe' command to select the
@@ -76,7 +77,8 @@ optional arguments:
                         could be either a dir containing a single run for a specific
                         date or a dir containing several runs for various dates or a
                         dataset dir.
-                            
+  -p                    When used with -t or -b options, it means that the output will
+                        printed out to stdout instead of creating a graph                             
 """
 
 		super(MyParser,self).__init__(version="Kaust Unified Benchmark Environment (KUBE) version 0.97",usage=self.usage)
@@ -131,6 +133,7 @@ if __name__ == "__main__":
 
 	parser.add_argument("-b" , help='Option to be used with the \'probe\' command to select the metrics graph analysis',dest='b')
 	parser.add_argument("--target" , help='For the metrics graph analysis, select the target dir',dest='target')
+	parser.add_argument('-p', action='store_true', dest='p')
 	
 	args = parser.parse_args()
 	
@@ -143,7 +146,7 @@ if __name__ == "__main__":
 					'probe':['t','b'] ,\
 	}
 	# sub-options associated to options
-	sub_opts= { 't':['metric_name','since','to'],'b':['metric_name','target','since','to','at'] }
+	sub_opts= { 't':['metric_name','since','to','p'],'b':['metric_name','target','since','to','at','p'] }
 		
 	# get which command was invoked
 	command = args.command
@@ -152,6 +155,10 @@ if __name__ == "__main__":
 	options_dict = dict([ (a,args.__dict__[a]) for a in args.__dict__.keys() if args.__dict__[a]!=None and a!='command'] ) 
 	# Do the check if the command was invoked with the accepted options
 	accepted_opts = commands_opt[command] 
+
+	# remove 'p' if command is not probe
+	if command!='probe' and options_dict.keys().count('p')!=0:
+		del options_dict['p']
 
 	# 't' and 'b' can not be together with 'probe' command	
 	if command == 'probe' and options_dict.keys().count('t')!=0  and options_dict.keys().count('b')!=0:

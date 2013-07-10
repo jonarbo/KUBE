@@ -24,6 +24,7 @@ def start( args ):
 	delta=None
 	since=None
 	to=datetime.now()
+	printToSTDOUT=args['p'] 
 	
 	if 't' in opts:
 		# time analysis
@@ -38,7 +39,7 @@ def start( args ):
 				
 		if not 'since' in opts and not 'to' in opts:
 			# call the fast method
-			kube.timeAnalysis(target,mname)
+			kube.timeAnalysis(target,mname,printToSTDOUT)
 		else:	
 			try:			
 				if args.keys().count('since') !=0 :
@@ -53,7 +54,7 @@ def start( args ):
 			except Exception as x :
 				printer.error("Error!!! Possible wrong date format" , str(x))
 				return
-			kube.timeAnalysis(target,mname,to,delta)	
+			kube.timeAnalysis(target,mname,printToSTDOUT,to,delta)	
 		
 		return
 		
@@ -82,7 +83,7 @@ def start( args ):
 		
 		if not 'since' in opts and not 'to' in opts and not 'at' in opts:
 			# call the fast method
-			kube.metricAnalysis(template,target,to,to - datetime(1973,05,02),mname)
+			kube.metricAnalysis(template,target,printToSTDOUT,to,to - datetime(1973,05,02),mname)
 		else:		
 			try:		
 				if args.keys().count('since') !=0 :
@@ -97,7 +98,7 @@ def start( args ):
 			except Exception as x :
 				printer.error("Error","Possible wrong date format")
 				return					
-			kube.metricAnalysis(template,target,to,delta,mname)	
+			kube.metricAnalysis(template,target,printToSTDOUT,to,delta,mname)	
 
 		return
 		
