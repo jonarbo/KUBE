@@ -28,28 +28,27 @@ def start( args ):
 	useRRD = args['rrd']
 	del ( args['rrd'] )	
 	
-	if len( args.keys())==0:
-		# refine every run 
-		kube.refine(rrd=useRRD)	
-	else:
-		delta=None
-		since=None
-		to=datetime.now()
+	delta=None
+	since=None
+	to=datetime.now()
 
-		if args.keys().count('since') !=0 :
-			since=parser.parse(args['since'])
-			del(args['since'])
-		if args.keys().count('to') !=0 :
-			to=parser.parse(args['to'])
-			del(args['to'])	
-			
-		if since:
-			delta = to-since
-		else:
-			delta = to - datetime(1973,05,02)
-			since = 'origin'
-		
-		opts = args.keys()
+	if args.keys().count('since') !=0 :
+		since=parser.parse(args['since'])
+		del(args['since'])
+	if args.keys().count('to') !=0 :
+		to=parser.parse(args['to'])
+		del(args['to'])	
+	
+	if since:
+		delta = to-since
+	else:
+		delta = to - datetime(1973,05,02)
+		since = 'origin'
+
+	opts = args.keys()
+	if len(opts)==0:
+		kube.refine(To=to,Delta=delta,rrd=useRRD)
+	else:
 		for o in opts:
 			what = o 
 			items = args[what].split(',')
@@ -57,5 +56,6 @@ def start( args ):
 				kube.refine(what,To=to,Delta=delta,rrd=useRRD)	
 			else:
 				for i in items:
+					print "sfsdf"
 					kube.refine(what,i,To=to,Delta=delta,rrd=useRRD)
-					
+			

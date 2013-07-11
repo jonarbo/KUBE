@@ -501,21 +501,21 @@ set xtics rotate
 			for app in self.a_apps:
 					self.__refineApp(app,To,Delta,rrd)
 			for net in self.a_nets:
-					self.__refineNet(net,rrd)
+					self.__refineNet(net,To,Delta,rrd)
 			for synth in self.a_synths:
-					self.__refineSynthetics(synth,rrd)		
+					self.__refineSynthetics(synth,To,Delta,rrd)		
 			for fs in self.a_filesys:
-					self.__refineFilesystem(fs,rrd)		
+					self.__refineFilesystem(fs,To,Delta,rrd)		
 
 		elif item == 'apps':
 			printer.plain(printer.bold("***********************************************"))
 			printer.plain(printer.bold("***")+"   KUBE refine stage for selected Apps:  " + printer.bold("***"))
 			printer.plain(printer.bold("***********************************************"))
-			if name and self.a_apps.keys().count(name.lower()) == 0:
+			if name and self.a_apps.keys().count(name) == 0:
 				printer.warning( "Warning", "Application " +  printer.bold( name ) + " not found or not active"	)
 				return
 			if name:
-				self.__refineApp(name.lower(),To,Delta,rrd)	
+				self.__refineApp(name,To,Delta,rrd)	
 			else:
 				for app in self.a_apps:	
 					self.__refineApp(app,To,Delta,rrd)	
@@ -524,40 +524,40 @@ set xtics rotate
 			printer.plain(printer.bold("***********************************************"))
 			printer.plain(printer.bold("***") + "     KUBE refine stage for Networks:     "+printer.bold("***"))
 			printer.plain(printer.bold("***********************************************"))
-			if name and self.a_nets.keys().count(name.lower()) == 0:
+			if name and self.a_nets.keys().count(name) == 0:
 				printer.warning( "Warning", "Network " +  printer.bold( name ) + " not found or not active"	)
 				return
 			if name:
-				self.__refineNet(name.lower(),rrd)	
+				self.__refineNet(name,To,Delta,rrd)	
 			else:
 				for app in self.a_nets:	
-					self.__refineNet(app,rrd)	
+					self.__refineNet(app,To,Delta,rrd)	
 
 		elif item == 'filesys':
 			printer.plain(printer.bold("***********************************************"))
 			printer.plain(printer.bold("***")+"     KUBE refine stage for Filesystems:  " +printer.bold("***"))
 			printer.plain(printer.bold("***********************************************"))
-			if name and  self.a_filesys.keys().count(name.lower()) == 0:
+			if name and  self.a_filesys.keys().count(name) == 0:
 				printer.warning( "Warning", "Filesystem " +  printer.bold( name ) + " not found or not active"	)
 				return
 			if name:
-				self.__refineFilesystem(name.lower(),rrd)				
+				self.__refineFilesystem(name,To,Delta,rrd)				
 			else:
 				for app in self.a_filesys:	
-					self.__refineFilesystem(app,rrd)	
+					self.__refineFilesystem(app,To,Delta,rrd)	
 
 		elif item == 'synths':
 			printer.plain(printer.bold("***********************************************"))
 			printer.plain(printer.bold("***")+"     KUBE refine stage for  Synthetics:  "+printer.bold("***"))
 			printer.plain(printer.bold("***********************************************"))
-			if name and self.a_synths.keys().count(name.lower()) == 0:
+			if name and self.a_synths.keys().count(name) == 0:
 				printer.warning( "Warning", "Benchmark " +  printer.bold( name ) + " not found or not active"	)
 				return
 			if name:
-				self.__refineSynthetics(name.lower(),rrd)				
+				self.__refineSynthetics(name,To,Delta,rrd)				
 			else:
 				for app in self.a_synths:	
-					self.__refineSynthetics(app,rrd)	
+					self.__refineSynthetics(app,To,Delta,rrd)	
 
 		else:
 			printer.error("Unknown item",  printer.bold(str(item)) ) 
@@ -587,7 +587,7 @@ set xtics rotate
 
 		Printer.Level=Printer.Level-1
 
-	def __refineSynthetics(self,name,rrd):
+	def __refineSynthetics(self,name,To,Delta,rrd):
 		printer.info("Synthetic", name )
 		Printer.Level=Printer.Level+1
 		synth = self.a_synths[name]
@@ -601,10 +601,10 @@ set xtics rotate
 			os.makedirs(analysisd)
 
 		for dataset in synth:	
-			self.__refineDataset(dataset,runsd,analysisd,rrd)		
+			self.__refineDataset(dataset,runsd,analysisd,To,Delta,rrd)		
 		Printer.Level=Printer.Level-1
 
-	def __refineFilesystem(self,name,rrd):
+	def __refineFilesystem(self,name,To,Delta,rrd):
 		printer.info("Filesystem", name )
 		Printer.Level=Printer.Level+1
 		fs = self.a_filesys[name]
@@ -618,10 +618,10 @@ set xtics rotate
 			os.makedirs(analysisd)
 		
 		for dataset in fs:
-			self.__refineDataset(dataset,runsd,analysisd,rrd)	
+			self.__refineDataset(dataset,runsd,analysisd,To,Delta,rrd)	
 		Printer.Level=Printer.Level-1
 						
-	def __refineNet(self,name,rrd):
+	def __refineNet(self,name,To,Delta,rrd):
 		printer.info( "Network",name )
 		Printer.Level=Printer.Level+1
 		net = self.a_nets[name]
@@ -635,7 +635,7 @@ set xtics rotate
 			os.makedirs(analysisd)
 
 		for dataset in net:		
-			self.__refineDataset(dataset,runsd,analysisd,rrd)		
+			self.__refineDataset(dataset,runsd,analysisd,To,Delta,rrd)		
 		Printer.Level=Printer.Level-1
 
 	def __refineDataset(self,dataset,runsd,analysisd,To=None,Delta=None,rrd=False):
@@ -762,6 +762,7 @@ set xtics rotate
 			return	
 
 		# Add to the new runs list, the dirs already analyzed ... Only if they have changed 
+		# New runs are ALWAYS refined ... only existing dirs in the results dir can be skipped
 		if configChanged:
 			for key in a.keys():
 				if not key in u: 
@@ -789,9 +790,7 @@ set xtics rotate
 		START = 0.0
 		END = 2*math.pi
 		for rd in u:
-		
-			#printer.info("Run", rd )
-					
+	
 			#get the cpus from the run name:
 			str2find = "(\d+)cpus_"	
 			reple = re.compile( str2find )
@@ -1090,11 +1089,11 @@ set xtics rotate
 			printer.plain(printer.bold("********************************************"))			
 			printer.plain(printer.bold("***")+"  Running KUBE for selected Apps:     "+ printer.bold("***"))
 			printer.plain(printer.bold("********************************************"))
-			if name and self.a_apps.keys().count(name.lower()) == 0:
+			if name and self.a_apps.keys().count(name) == 0:
 				printer.warning("Warning","Application " +  printer.bold(name) + " not found or not active"	)
 				return		
 			if  name:
-				self.__runApp(name.lower())	
+				self.__runApp(name)	
 			else:
 				for app in self.a_apps:
 					self.__runApp(app)
@@ -1103,11 +1102,11 @@ set xtics rotate
 			printer.plain(printer.bold("********************************************"))			
 			printer.plain(printer.bold("***")+"  Running KUBE for selected Networks: "+printer.bold("***"))
 			printer.plain(printer.bold("********************************************"))
-			if name  and self.a_nets.keys().count(name.lower()) == 0:
+			if name  and self.a_nets.keys().count(name) == 0:
 				printer.warning("Warning","Network " +  printer.bold(name) + " not found or not active"	)
 				return		
 			if  name:
-				self.__runNet(name.lower())
+				self.__runNet(name)
 			else:
 				for app in self.a_nets:
 					self.__runNet(app)
@@ -1116,11 +1115,11 @@ set xtics rotate
 			printer.plain(printer.bold("*********************************************"))
 			printer.plain(printer.bold("***")+" Running KUBE for selected Filesystem: "+printer.bold("***"))
 			printer.plain(printer.bold("*********************************************"))
-			if name  and self.a_filesys.keys().count(name.lower()) == 0:
+			if name  and self.a_filesys.keys().count(name) == 0:
 				printer.warning("Warning","Filesystem " +  printer.bold(name) + " not found or not active"	)
 				return		
 			if  name:
-				self.__runFilesys(name.lower())
+				self.__runFilesys(name)
 			else:
 				for app in self.a_filesys:
 					self.__runFilesys(app)
@@ -1129,7 +1128,8 @@ set xtics rotate
 			printer.plain(printer.bold("**********************************************"))			
 			printer.plain(printer.bold("***")+"  Running KUBE for selected Synthetics: "+printer.bold("***"))
 			printer.plain(printer.bold("**********************************************"))
-			if name  and self.a_synths.keys().count(name.lower()) == 0:
+			print name, self.a_synths.keys()
+			if name  and self.a_synths.keys().count(name) == 0:
 				printer.warning("Warning","Benchmark " +  printer.bold(name) + " not found or not active"	)
 				return		
 			if  name:
