@@ -14,6 +14,10 @@ KUBE:
    TOOLS: 
         path: tools             # if the leading "/" is provided then the absolute path is taken, otherwise the relative path to HOME ([KUBE][HOME])  will be used
 
+   RRDTOOL:     
+        root: /home/naranjja/Bin/rrdtool-1.4.8        # if the leading "/" is provided then the absolute path is taken, otherwise the relative path to HOME ([KUBE][HOME])  will be used
+        path: data/rrd                                # path to where the database will be stored
+
    BATCH:             
         - name: LSF
           script: run.lsf.in # if the leading "/" is provided then the absolute path is taken, otherwise the relative path to [KUBE][HOME]/etc  will be used          

@@ -10,7 +10,7 @@ def start( args ):
 	""" 
 		Entry point for the 'refine' command.
 		Synopsis:
-		kube.py refine  [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS] [--since SINCE] [--to TO] 
+		kube.py refine  [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS] [--since SINCE] [--to TO] [--rrd] [--log FILE]
 	"""
 
 	# create the engine instance
@@ -25,9 +25,12 @@ def start( args ):
 		# remove the --log from the args
 		del ( args['log'] )	
 	
+	useRRD = args['rrd']
+	del ( args['rrd'] )	
+	
 	if len( args.keys())==0:
 		# refine every run 
-		kube.refine()	
+		kube.refine(rrd=useRRD)	
 	else:
 		delta=None
 		since=None
@@ -51,8 +54,8 @@ def start( args ):
 			what = o 
 			items = args[what].split(',')
 			if items[0].lower()=='all':
-				kube.refine(what,To=to,Delta=delta)	
+				kube.refine(what,To=to,Delta=delta,rrd=useRRD)	
 			else:
 				for i in items:
-					kube.refine(what,i,To=to,Delta=delta)
+					kube.refine(what,i,To=to,Delta=delta,rrd=useRRD)
 					

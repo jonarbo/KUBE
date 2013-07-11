@@ -14,7 +14,7 @@ def start( args ):
 	""" 
 		Entry point for the 'probe' command.
 		Synopsis:
-		kube.py probe {-t DIR [-m METRIC_NAME] [--since SINCE] [--to TO] , -b BASE_DIR [--target DIR] [--since SINCE] [--to TO] }
+		kube.py probe {-t DIR [-p] [-m METRIC_NAME] [--since SINCE] [--to TO] , -b BASE_DIR [-p] [--target DIR] { [--since SINCE] [--to TO], [--at DATE] }}
 	"""
 
 	# create the engine instance

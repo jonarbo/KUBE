@@ -139,6 +139,9 @@ class KUBE:
 			tfc = tf.readline()
 		tf.close
 
+		if len(metrics)==0:
+			return
+
 		if template[len(template)-1] == '/':
 			template = template[:-1] 	
 			
@@ -491,18 +494,18 @@ set xtics rotate
 #	Post-Process (refine) functions
 #
 #####################################################################  
-	def refine(self,item=None,name=None,To=None,Delta=None):
+	def refine(self,item=None,name=None,To=None,Delta=None,rrd=False):
 		""" Runs the refine stage for a given 'item' and 'name' 
 		"""
 		if item == None: # means analyze everything	
 			for app in self.a_apps:
-					self.__refineApp(app,To,Delta)
+					self.__refineApp(app,To,Delta,rrd)
 			for net in self.a_nets:
-					self.__refineNet(net)
+					self.__refineNet(net,rrd)
 			for synth in self.a_synths:
-					self.__refineSynthetics(synth)		
+					self.__refineSynthetics(synth,rrd)		
 			for fs in self.a_filesys:
-					self.__refineFilesystem(fs)		
+					self.__refineFilesystem(fs,rrd)		
 
 		elif item == 'apps':
 			printer.plain(printer.bold("***********************************************"))
@@ -512,10 +515,10 @@ set xtics rotate
 				printer.warning( "Warning", "Application " +  printer.bold( name ) + " not found or not active"	)
 				return
 			if name:
-				self.__refineApp(name.lower(),To,Delta)	
+				self.__refineApp(name.lower(),To,Delta,rrd)	
 			else:
 				for app in self.a_apps:	
-					self.__refineApp(app,To,Delta)	
+					self.__refineApp(app,To,Delta,rrd)	
 
 		elif item == 'nets':		
 			printer.plain(printer.bold("***********************************************"))
@@ -525,10 +528,10 @@ set xtics rotate
 				printer.warning( "Warning", "Network " +  printer.bold( name ) + " not found or not active"	)
 				return
 			if name:
-				self.__refineNet(name.lower())	
+				self.__refineNet(name.lower(),rrd)	
 			else:
 				for app in self.a_nets:	
-					self.__refineNet(app)	
+					self.__refineNet(app,rrd)	
 
 		elif item == 'filesys':
 			printer.plain(printer.bold("***********************************************"))
@@ -538,10 +541,10 @@ set xtics rotate
 				printer.warning( "Warning", "Filesystem " +  printer.bold( name ) + " not found or not active"	)
 				return
 			if name:
-				self.__refineFilesystem(name.lower())				
+				self.__refineFilesystem(name.lower(),rrd)				
 			else:
 				for app in self.a_filesys:	
-					self.__refineFilesystem(app)	
+					self.__refineFilesystem(app,rrd)	
 
 		elif item == 'synths':
 			printer.plain(printer.bold("***********************************************"))
@@ -551,10 +554,10 @@ set xtics rotate
 				printer.warning( "Warning", "Benchmark " +  printer.bold( name ) + " not found or not active"	)
 				return
 			if name:
-				self.__refineSynthetics(name.lower())				
+				self.__refineSynthetics(name.lower(),rrd)				
 			else:
 				for app in self.a_synths:	
-					self.__refineSynthetics(app)	
+					self.__refineSynthetics(app,rrd)	
 
 		else:
 			printer.error("Unknown item",  printer.bold(str(item)) ) 
@@ -563,7 +566,7 @@ set xtics rotate
 		self.__cleanOldRuns()
 
 	
-	def __refineApp(self,name,To,Delta):
+	def __refineApp(self,name,To,Delta,rrd):
 		"""  Performs the refine stage for an app. Go into the runs dir and identify the app and the dataset.
 			 then creates a similar entry in the 'data/results' dir and copies the output files to the new location.
 			 it also creates a .cvs and a .raw files with the metrics specified in the YAML config file. The .raw file is used later on
@@ -580,11 +583,11 @@ set xtics rotate
 			os.makedirs(analysisd)
 		
 		for dataset in app:
-			self.__refineDataset(dataset,runsd,analysisd,To,Delta)			
+			self.__refineDataset(dataset,runsd,analysisd,To,Delta,rrd)			
 
 		Printer.Level=Printer.Level-1
 
-	def __refineSynthetics(self,name):
+	def __refineSynthetics(self,name,rrd):
 		printer.info("Synthetic", name )
 		Printer.Level=Printer.Level+1
 		synth = self.a_synths[name]
@@ -598,10 +601,10 @@ set xtics rotate
 			os.makedirs(analysisd)
 
 		for dataset in synth:	
-			self.__refineDataset(dataset,runsd,analysisd)		
+			self.__refineDataset(dataset,runsd,analysisd,rrd)		
 		Printer.Level=Printer.Level-1
 
-	def __refineFilesystem(self,name):
+	def __refineFilesystem(self,name,rrd):
 		printer.info("Filesystem", name )
 		Printer.Level=Printer.Level+1
 		fs = self.a_filesys[name]
@@ -615,10 +618,10 @@ set xtics rotate
 			os.makedirs(analysisd)
 		
 		for dataset in fs:
-			self.__refineDataset(dataset,runsd,analysisd)	
+			self.__refineDataset(dataset,runsd,analysisd,rrd)	
 		Printer.Level=Printer.Level-1
 						
-	def __refineNet(self,name):
+	def __refineNet(self,name,rrd):
 		printer.info( "Network",name )
 		Printer.Level=Printer.Level+1
 		net = self.a_nets[name]
@@ -632,10 +635,10 @@ set xtics rotate
 			os.makedirs(analysisd)
 
 		for dataset in net:		
-			self.__refineDataset(dataset,runsd,analysisd)		
+			self.__refineDataset(dataset,runsd,analysisd,rrd)		
 		Printer.Level=Printer.Level-1
 
-	def __refineDataset(self,dataset,runsd,analysisd,To=None,Delta=None):
+	def __refineDataset(self,dataset,runsd,analysisd,To=None,Delta=None,rrd=False):
 		import yaml
 		import hashlib
 		
@@ -643,7 +646,7 @@ set xtics rotate
 		allruns={}
 		resultsdir = analysisd +dataset['name']
 		allanalysis = {}
-		fileredallanalysis = {}
+		filteredallanalysis = {}
 		
 		# 'digest' contains the global config settings md5 sum that affects this particular dataset
 		m = hashlib.md5()		
@@ -660,12 +663,20 @@ set xtics rotate
 				for r in os.listdir(resultsdir):
 					if os.path.isdir(resultsdir+'/'+r):
 						allanalysis[r] = os.listdir(resultsdir+'/'+r)	
+						again = True	
+						while again:
+							again = False
+							for d in allanalysis[r] :
+								# remove dir that are not in the date format
+								if not re.search("\d\d\d\d-\d\d-\d\dT\d\dh\d\dm\d\ds",d):
+									allanalysis[r].remove(d)
+									again = True						
 						if To and Delta:
 							# filter dirs by date
-							fileredallanalysis[r] = []
+							filteredallanalysis[r] = []
 							for d in walkDir(resultsdir+'/'+r,To,Delta):
-								fileredallanalysis[r].append( os.path.basename(d) ) 
-		
+								filteredallanalysis[r].append( os.path.basename(d) ) 
+
 		configChanged = True
 		# if file already exists ... Check if 
 		# the config specifics for this dataset  
@@ -739,26 +750,26 @@ set xtics rotate
 					
 		# so far allruns contains only valid, new runs									
 		u = allruns
-		if len(fileredallanalysis)==0:
+		if len(filteredallanalysis)==0:
 			a = allanalysis
 		else:
-			a = fileredallanalysis
+			a = filteredallanalysis
 
 		# if there is nothing in u (runs) and nothing has changed  .. skip dataset because there is nothing new
 		if len( [v for v in u.values() if len(v) !=0 ]  )==0 and not configChanged: 
 			printer.info( "Nothing changed", "Skipping dataset " + dataset['name'] )
 			Printer.Level=Printer.Level-1
 			return	
-	
-		
+
 		# Add to the new runs list, the dirs already analyzed ... Only if they have changed 
 		if configChanged:
 			for key in a.keys():
-				if not key in u: u[key] = a[key]
+				if not key in u: 
+					u[key] = a[key]
 				else:
 					# merge the existing runs with the new ones ..
 					u[key] = u[key] + a[key]
-					
+
 		# At this point we either have new runs to process or we need to re-process existing results because we changed the config file
 						
 		if len(u) == 0:
@@ -766,7 +777,14 @@ set xtics rotate
 			printer.warning("Nothing to refine")	
 			Printer.Level=Printer.Level-1
 			return
-		
+			
+		pythonlibpath = self.rrdtool_root + '/lib/python' + str(sys.version_info.major) + '.' + str(sys.version_info.minor) + '/site-packages/'
+		if rrd and not 	os.path.isdir(pythonlibpath):					
+			printer.warning("RRDTool","Can't find a valid RRDTool instalation that matches this Python version or RRD is misconfigured in the config file")
+			rrd = False
+		else:
+			sys.path.append( pythonlibpath )
+			
 		# Do the analysis ...
 		START = 0.0
 		END = 2*math.pi
@@ -779,6 +797,35 @@ set xtics rotate
 			reple = re.compile( str2find )
 			mobj = reple.search(rd)
 			cpus = mobj.group(1)
+
+			# Prepare to update RRD tool
+			epoch = datetime.datetime(1970, 1, 1)
+			rrddatabasepath = dataset['rrdtool'] + '/' +  dataset['bench'] + '/' +  dataset['parent'] + '/' +  dataset['name'] + '/' + rd + '/'
+			updatedatabasestr = {}
+			if rrd:
+				import rrdtool, tempfile
+				if not os.path.isdir(rrddatabasepath):
+					os.makedirs(rrddatabasepath)
+				
+				if dataset.keys().count('metrics') != 0:	
+					for metric in  dataset['metrics']:
+						if (metric.keys().count('name') != 0 and metric.keys().count('command') != 0 and metric.keys().count('units') != 0) :
+							name= metric['name']		
+							# first check if a file exists with the name of the metric
+							rrddatabasefile = rrddatabasepath + name + '.rrd'
+							if not os.path.isfile(rrddatabasefile):
+								# create 	
+								rrdtool.create(  rrddatabasefile ,\
+												 '--step', '3600', '--no-overwrite','--start', '1356998400',	# step 1h \
+												 'DS:'+ name +':GAUGE:172800:U:U', 								# heartbeat 48h \
+												 'RRA:AVERAGE:0.9:1:744',										# 1 daily sample for 1 month \
+												 'RRA:AVERAGE:0.9:168:52',										# 1 week average for 1 year  \
+												 'RRA:AVERAGE:0.9:744:24' 										# 1 month average for 2 years\
+											   )								
+						else:
+							rrd=False
+				else:
+					rrd=False
 
 			for i in u[rd]:
 				printer.info("Run", rd +"/" +i )
@@ -840,7 +887,7 @@ set xtics rotate
 				# only continue if available metrics ... 
 				if dataset.keys().count('metrics') == 0:	
 					continue
-
+	
 				# now crate a .csv and the .raw file suitable to be used later on with gnuplot...
 				o = open( rd +"/"+i + "/analysis.csv","w")
 				r = open( rd +"/"+i + "/analysis.raw","w")
@@ -1000,7 +1047,25 @@ set xtics rotate
 					# r.write( str(sort_dict[0][0]) + "  " + str(sort_dict[0][1]) + "  "  + str(sort_dict[0][2]) + "  "  + str(sort_dict[0][3]) + "  " + timestamp   + "  " + str(sort_dict[0][4]) + "  " + str(sort_dict[0][5]) + "  " + str(sort_dict[0][6]) + "\n"  )
 				r.flush
 				r.close		
+				
+				if rrd:
+					if sort_dict:					
+						for sd in sort_dict:		
+							dt = datetime.datetime.strptime(i,'%Y-%m-%dT%Hh%Mm%Ss')
+							td = dt-epoch
+							if updatedatabasestr.keys().count(sd[0]) == 0:
+								updatedatabasestr[sd[0]] = []						
+							updatedatabasestr[sd[0]].append(" " + str(td.days*86400+td.seconds)+':'+str(sd[2]))
+																
 				os.chdir( resultsdir )
+			
+			# update rrd 
+			if rrd:
+				for uk in updatedatabasestr.keys():
+					rrdtool.update(  rrddatabasepath + uk + '.rrd',\
+									 updatedatabasestr[uk]\
+								  )
+
 		Printer.Level=Printer.Level-1
 
 #####################################################################                                           
@@ -1943,6 +2008,17 @@ set xtics rotate
 			self.tools_dir = self.home + "/" + self.tools_dir
 			yaml_conf['KUBE']['TOOLS']['path']= self.tools_dir
 
+		#set RRDTOOL
+		self.rrdtool_path = yaml_conf['KUBE']['RRDTOOL']['path']
+		if re.match("[^/]",self.rrdtool_path):
+			self.rrdtool_path = self.home + "/" + self.rrdtool_path
+			yaml_conf['KUBE']['RRDTOOL']['path']= self.rrdtool_path
+		self.rrdtool_root = yaml_conf['KUBE']['RRDTOOL']['root']
+		if re.match("[^/]",self.rrdtool_root):
+			self.rrdtool_root = self.home + "/" + self.rrdtool_root
+			yaml_conf['KUBE']['RRDTOOL']['root']= self.rrdtool_root
+
+			
 		# set batchs
 		self.batchs = yaml_conf['KUBE']['BATCH']
 		if self.batchs==None:

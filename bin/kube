@@ -18,7 +18,7 @@ Some <OPTIONS> are specific to some <COMMANDS>:
 kube.py clean   [-d {runs,results}] [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS] [--since SINCE] [--to TO]
 kube.py view    [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS]
 kube.py run     [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS] [--log FILE]
-kube.py refine  [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS] [--since SINCE] [--to TO] [--log FILE]
+kube.py refine  [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS] [--since SINCE] [--to TO] [--log FILE] [--rrd]
 kube.py probe   -t DIR [-p] [-m METRIC_NAMES] [--since SINCE] [--to TO] 
 kube.py probe   -b BASE_DIR [-p] [--target DIR] [-m METRIC_NAMES] { [--since SINCE] [--to TO] , [--at DATE] } }
 """		
@@ -37,6 +37,9 @@ optional arguments:
   --to TO               Option to set the end time when needed
   --at DATE             Option to select a specific date when needed
   --log FILE            Print out log information to FILE  
+  --rrd                 Used along with the command 'refine' to enable RRD
+                        integration. Each metric computed is stored in a RRD 
+                        database 
   -d {run,results}      Option to specify which directory is to be cleaned
                         when the 'clean' command is used
   -a APPS               Option used to select which apps benchmark from the
@@ -134,7 +137,8 @@ if __name__ == "__main__":
 	parser.add_argument("-b" , help='Option to be used with the \'probe\' command to select the metrics graph analysis',dest='b')
 	parser.add_argument("--target" , help='For the metrics graph analysis, select the target dir',dest='target')
 	parser.add_argument('-p', action='store_true', dest='p')
-	
+	parser.add_argument('--rrd', action='store_true', dest='rrd')
+		
 	args = parser.parse_args()
 	
 	# Associating commands with options ... 	
@@ -142,7 +146,7 @@ if __name__ == "__main__":
 					'clean':['d','since','to','apps','nets','filesys','synths'] ,\
 					'run':['apps','nets','filesys','synths','log'] ,\
 					'view':['apps','nets','filesys','synths','log'],\
-					'refine':['apps','nets','filesys','synths','since','to','log'] ,\
+					'refine':['apps','nets','filesys','synths','since','to','log','rrd'] ,\
 					'probe':['t','b'] ,\
 	}
 	# sub-options associated to options
@@ -159,6 +163,18 @@ if __name__ == "__main__":
 	# remove 'p' if command is not probe
 	if command!='probe' and options_dict.keys().count('p')!=0:
 		del options_dict['p']
+
+	# remove 'rrd' if command is not 'refine'
+	if command!='refine' and options_dict.keys().count('rrd')!=0:
+		if options_dict['rrd'] == False:
+			del options_dict['rrd']
+		else:
+			print "-----------------------------------" 
+			print "wrong options given to the command: \'" + command +"\'"
+			print "\'--rrd\' is not a valid option here "
+			print 
+			parser.print_usage()
+			sys.exit(1)			
 
 	# 't' and 'b' can not be together with 'probe' command	
 	if command == 'probe' and options_dict.keys().count('t')!=0  and options_dict.keys().count('b')!=0:
