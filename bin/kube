@@ -33,8 +33,9 @@ optional arguments:
 -------------------
   -h, --help            show this help message and exit
   -v, --version         show program's version number and exit
-  --since SINCE         Option to set the initial time when needed
-  --to TO               Option to set the end time when needed
+  --since SINCE         Option to set the initial time when needed. Default is the
+                        first registered date
+  --to TO               Option to set the end time when needed. Default is 'Now'
   --at DATE             Option to select a specific date when needed
   --log FILE            Print out log information to FILE  
   --rrd                 Used along with the command 'refine' to enable RRD
@@ -81,7 +82,7 @@ optional arguments:
                         date or a dir containing several runs for various dates or a
                         dataset dir.
   -p                    When used with -t or -b options, it means that the output will
-                        printed out to stdout instead of creating a graph                             
+                        be printed out to stdout instead of creating a graph                             
 """
 
 		super(MyParser,self).__init__(version="Kaust Unified Benchmark Environment (KUBE) version 0.97",usage=self.usage)

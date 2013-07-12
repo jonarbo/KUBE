@@ -56,6 +56,5 @@ def start( args ):
 				kube.refine(what,To=to,Delta=delta,rrd=useRRD)	
 			else:
 				for i in items:
-					print "sfsdf"
 					kube.refine(what,i,To=to,Delta=delta,rrd=useRRD)
 			

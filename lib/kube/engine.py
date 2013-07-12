@@ -814,6 +814,8 @@ set xtics rotate
 							rrddatabasefile = rrddatabasepath + name + '.rrd'
 							if not os.path.isfile(rrddatabasefile):
 								# create 	
+								if len(name)>19 : # RRD Limitation
+									name = name[0:18]
 								rrdtool.create(  rrddatabasefile ,\
 												 '--step', '3600', '--no-overwrite','--start', '1356998400',	# step 1h \
 												 'DS:'+ name +':GAUGE:172800:U:U', 								# heartbeat 48h \
