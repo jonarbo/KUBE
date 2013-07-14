@@ -822,7 +822,7 @@ set xtics rotate
 												 'RRA:AVERAGE:0.9:1:744',										# 1 daily sample for 1 month \
 												 'RRA:AVERAGE:0.9:168:52',										# 1 week average for 1 year  \
 												 'RRA:AVERAGE:0.9:744:24' 										# 1 month average for 2 years\
-											   )								
+											   )																
 						else:
 							rrd=False
 				else:
@@ -1040,6 +1040,11 @@ set xtics rotate
 				o.flush()
 				o.close
 				
+				# compute the time in secs since 1970 to be used with rrd and append to the final dict
+				#td = datetime.datetime.strptime(timestamp,'%Y-%m-%dT%Hh%Mm%Ss') - epoch
+				#dt = [ td.days*86400+td.seconds ]*len(metrics)			
+				#sort_dict = zip(metrics, units_a , m_values, ref_value_a, threshold_a_u, threshold_a_l ,dt)		
+				
 				sort_dict = zip(metrics, units_a , m_values, ref_value_a, threshold_a_u, threshold_a_l )		
 				if sort_dict:
 					for k in sort_dict:
@@ -1055,17 +1060,18 @@ set xtics rotate
 							dt = datetime.datetime.strptime(i,'%Y-%m-%dT%Hh%Mm%Ss')
 							td = dt-epoch
 							if updatedatabasestr.keys().count(sd[0]) == 0:
-								updatedatabasestr[sd[0]] = []						
-							updatedatabasestr[sd[0]].append(" " + str(td.days*86400+td.seconds)+':'+str(sd[2]))
+								updatedatabasestr[sd[0]] = {}						
+							updatedatabasestr[sd[0]][td.days*86400+td.seconds] = sd[2]
 																
 				os.chdir( resultsdir )
-			
+
 			# update rrd 
 			if rrd:
 				for uk in updatedatabasestr.keys():
-					rrdtool.update(  rrddatabasepath + uk + '.rrd',\
-									 updatedatabasestr[uk]\
-								  )
+					for sd in sorted(updatedatabasestr[uk].keys()):
+							# only update if the date is greater than the last update ...
+							if rrdtool.last( rrddatabasepath + uk + '.rrd') < sd:
+								rrdtool.update(  rrddatabasepath + uk + '.rrd', str(sd)+':'+str(updatedatabasestr[uk][sd] ))
 
 		Printer.Level=Printer.Level-1
 

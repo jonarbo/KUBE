@@ -18,7 +18,7 @@ Some <OPTIONS> are specific to some <COMMANDS>:
 kube.py clean   [-d {runs,results}] [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS] [--since SINCE] [--to TO]
 kube.py view    [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS]
 kube.py run     [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS] [--log FILE]
-kube.py refine  [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS] [--since SINCE] [--to TO] [--log FILE] [--rrd]
+kube.py refine  [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS] [--since SINCE] [--to TO] [--log FILE] [--rrd] [--force]
 kube.py probe   -t DIR [-p] [-m METRIC_NAMES] [--since SINCE] [--to TO] 
 kube.py probe   -b BASE_DIR [-p] [--target DIR] [-m METRIC_NAMES] { [--since SINCE] [--to TO] , [--at DATE] } }
 """		
@@ -41,6 +41,10 @@ optional arguments:
   --rrd                 Used along with the command 'refine' to enable RRD
                         integration. Each metric computed is stored in a RRD 
                         database 
+  --force               The 'refine' stage is only done if the configuration section
+                        for the current dataset has changed. You may want to force 
+                        the 'refine' stage for some reason,ie: create rrd database 
+                        for specific dates that are already refined
   -d {run,results}      Option to specify which directory is to be cleaned
                         when the 'clean' command is used
   -a APPS               Option used to select which apps benchmark from the
