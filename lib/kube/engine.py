@@ -494,18 +494,18 @@ set xtics rotate
 #	Post-Process (refine) functions
 #
 #####################################################################  
-	def refine(self,item=None,name=None,To=None,Delta=None,rrd=False):
+	def refine(self,item=None,name=None,To=None,Delta=None,rrd=False,force=False):
 		""" Runs the refine stage for a given 'item' and 'name' 
 		"""
 		if item == None: # means analyze everything	
 			for app in self.a_apps:
-					self.__refineApp(app,To,Delta,rrd)
+					self.__refineApp(app,To,Delta,rrd,force)
 			for net in self.a_nets:
-					self.__refineNet(net,To,Delta,rrd)
+					self.__refineNet(net,To,Delta,rrd,force)
 			for synth in self.a_synths:
-					self.__refineSynthetics(synth,To,Delta,rrd)		
+					self.__refineSynthetics(synth,To,Delta,rrd,force)		
 			for fs in self.a_filesys:
-					self.__refineFilesystem(fs,To,Delta,rrd)		
+					self.__refineFilesystem(fs,To,Delta,rrd,force)		
 
 		elif item == 'apps':
 			printer.plain(printer.bold("***********************************************"))
@@ -515,10 +515,10 @@ set xtics rotate
 				printer.warning( "Warning", "Application " +  printer.bold( name ) + " not found or not active"	)
 				return
 			if name:
-				self.__refineApp(name,To,Delta,rrd)	
+				self.__refineApp(name,To,Delta,rrd,force)	
 			else:
 				for app in self.a_apps:	
-					self.__refineApp(app,To,Delta,rrd)	
+					self.__refineApp(app,To,Delta,rrd,force)	
 
 		elif item == 'nets':		
 			printer.plain(printer.bold("***********************************************"))
@@ -528,10 +528,10 @@ set xtics rotate
 				printer.warning( "Warning", "Network " +  printer.bold( name ) + " not found or not active"	)
 				return
 			if name:
-				self.__refineNet(name,To,Delta,rrd)	
+				self.__refineNet(name,To,Delta,rrd,force)	
 			else:
 				for app in self.a_nets:	
-					self.__refineNet(app,To,Delta,rrd)	
+					self.__refineNet(app,To,Delta,rrd,force)	
 
 		elif item == 'filesys':
 			printer.plain(printer.bold("***********************************************"))
@@ -541,10 +541,10 @@ set xtics rotate
 				printer.warning( "Warning", "Filesystem " +  printer.bold( name ) + " not found or not active"	)
 				return
 			if name:
-				self.__refineFilesystem(name,To,Delta,rrd)				
+				self.__refineFilesystem(name,To,Delta,rrd,force)				
 			else:
 				for app in self.a_filesys:	
-					self.__refineFilesystem(app,To,Delta,rrd)	
+					self.__refineFilesystem(app,To,Delta,rrd,force)	
 
 		elif item == 'synths':
 			printer.plain(printer.bold("***********************************************"))
@@ -554,10 +554,10 @@ set xtics rotate
 				printer.warning( "Warning", "Benchmark " +  printer.bold( name ) + " not found or not active"	)
 				return
 			if name:
-				self.__refineSynthetics(name,To,Delta,rrd)				
+				self.__refineSynthetics(name,To,Delta,rrd,force)				
 			else:
 				for app in self.a_synths:	
-					self.__refineSynthetics(app,To,Delta,rrd)	
+					self.__refineSynthetics(app,To,Delta,rrd,force)	
 
 		else:
 			printer.error("Unknown item",  printer.bold(str(item)) ) 
@@ -566,7 +566,7 @@ set xtics rotate
 		self.__cleanOldRuns()
 
 	
-	def __refineApp(self,name,To,Delta,rrd):
+	def __refineApp(self,name,To,Delta,rrd,force):
 		"""  Performs the refine stage for an app. Go into the runs dir and identify the app and the dataset.
 			 then creates a similar entry in the 'data/results' dir and copies the output files to the new location.
 			 it also creates a .cvs and a .raw files with the metrics specified in the YAML config file. The .raw file is used later on
@@ -583,11 +583,11 @@ set xtics rotate
 			os.makedirs(analysisd)
 		
 		for dataset in app:
-			self.__refineDataset(dataset,runsd,analysisd,To,Delta,rrd)			
+			self.__refineDataset(dataset,runsd,analysisd,To,Delta,rrd,force)			
 
 		Printer.Level=Printer.Level-1
 
-	def __refineSynthetics(self,name,To,Delta,rrd):
+	def __refineSynthetics(self,name,To,Delta,rrd,force):
 		printer.info("Synthetic", name )
 		Printer.Level=Printer.Level+1
 		synth = self.a_synths[name]
@@ -601,10 +601,10 @@ set xtics rotate
 			os.makedirs(analysisd)
 
 		for dataset in synth:	
-			self.__refineDataset(dataset,runsd,analysisd,To,Delta,rrd)		
+			self.__refineDataset(dataset,runsd,analysisd,To,Delta,rrd,force)		
 		Printer.Level=Printer.Level-1
 
-	def __refineFilesystem(self,name,To,Delta,rrd):
+	def __refineFilesystem(self,name,To,Delta,rrd,force):
 		printer.info("Filesystem", name )
 		Printer.Level=Printer.Level+1
 		fs = self.a_filesys[name]
@@ -618,10 +618,10 @@ set xtics rotate
 			os.makedirs(analysisd)
 		
 		for dataset in fs:
-			self.__refineDataset(dataset,runsd,analysisd,To,Delta,rrd)	
+			self.__refineDataset(dataset,runsd,analysisd,To,Delta,rrd,force)	
 		Printer.Level=Printer.Level-1
 						
-	def __refineNet(self,name,To,Delta,rrd):
+	def __refineNet(self,name,To,Delta,rrd,force):
 		printer.info( "Network",name )
 		Printer.Level=Printer.Level+1
 		net = self.a_nets[name]
@@ -635,10 +635,10 @@ set xtics rotate
 			os.makedirs(analysisd)
 
 		for dataset in net:		
-			self.__refineDataset(dataset,runsd,analysisd,To,Delta,rrd)		
+			self.__refineDataset(dataset,runsd,analysisd,To,Delta,rrd,force)		
 		Printer.Level=Printer.Level-1
 
-	def __refineDataset(self,dataset,runsd,analysisd,To=None,Delta=None,rrd=False):
+	def __refineDataset(self,dataset,runsd,analysisd,To=None,Delta=None,rrd=False,force=False):
 		import yaml
 		import hashlib
 		
@@ -685,7 +685,7 @@ set xtics rotate
 			# if digest file exists, read it and compare signatures.
 			mydigest = file( digestFile, 'r' ).read()	
 			if mydigest == digest:
-				configChanged=False
+				configChanged= False or force
 			else:
  				file( digestFile, 'w' ).write(str(digest))
 		else:

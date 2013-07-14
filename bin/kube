@@ -143,6 +143,7 @@ if __name__ == "__main__":
 	parser.add_argument("--target" , help='For the metrics graph analysis, select the target dir',dest='target')
 	parser.add_argument('-p', action='store_true', dest='p')
 	parser.add_argument('--rrd', action='store_true', dest='rrd')
+	parser.add_argument('--force', action='store_true', dest='force')
 		
 	args = parser.parse_args()
 	
@@ -151,7 +152,7 @@ if __name__ == "__main__":
 					'clean':['d','since','to','apps','nets','filesys','synths'] ,\
 					'run':['apps','nets','filesys','synths','log'] ,\
 					'view':['apps','nets','filesys','synths','log'],\
-					'refine':['apps','nets','filesys','synths','since','to','log','rrd'] ,\
+					'refine':['apps','nets','filesys','synths','since','to','log','rrd','force'] ,\
 					'probe':['t','b'] ,\
 	}
 	# sub-options associated to options
@@ -180,6 +181,21 @@ if __name__ == "__main__":
 			print 
 			parser.print_usage()
 			sys.exit(1)			
+
+	# remove 'force' if command is not 'refine'
+	if command!='refine' and options_dict.keys().count('force')!=0:
+		if options_dict['force'] == False:
+			del options_dict['force']
+		else:
+			print "-----------------------------------" 
+			print "wrong options given to the command: \'" + command +"\'"
+			print "\'--force\' is not a valid option here "
+			print 
+			parser.print_usage()
+			sys.exit(1)			
+
+
+
 
 	# 't' and 'b' can not be together with 'probe' command	
 	if command == 'probe' and options_dict.keys().count('t')!=0  and options_dict.keys().count('b')!=0:
