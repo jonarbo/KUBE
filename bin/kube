@@ -9,18 +9,18 @@ class MyParser(argparse.ArgumentParser):
 """
 The accepted ways to run KUBE are:
 ----------------------------------
-kube.py [ {-h,--help} ] 
-kube.py {-v,--version}
-kube.py <COMMAND> <OPTIONS>
+kube [ {-h,--help} ] 
+kube {-v,--version}
+kube <COMMAND> <OPTIONS>
 
 Some <OPTIONS> are specific to some <COMMANDS>: 
 -----------------------------------------------
-kube.py clean   [-d {runs,results}] [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS] [--since SINCE] [--to TO]
-kube.py view    [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS]
-kube.py run     [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS] [--log FILE]
-kube.py refine  [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS] [--since SINCE] [--to TO] [--log FILE] [--rrd] [--force]
-kube.py probe   -t DIR [-p] [-m METRIC_NAMES] [--since SINCE] [--to TO] 
-kube.py probe   -b BASE_DIR [-p] [--target DIR] [-m METRIC_NAMES] { [--since SINCE] [--to TO] , [--at DATE] } }
+kube clean   [-d {runs,results}] [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS] [--since SINCE] [--to TO]
+kube view    [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS]
+kube run     [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS] [--log FILE]
+kube refine  [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS] [--since SINCE] [--to TO] [--log FILE] [--rrd] [--force]
+kube probe   -t DIR [-p] [-m METRIC_NAMES] [--since SINCE] [--to TO] 
+kube probe   -b BASE_DIR [-p] [--target DIR] [-m METRIC_NAMES] { [--since SINCE] [--to TO] , [--at DATE] } }
 """		
 
 		self.help=\

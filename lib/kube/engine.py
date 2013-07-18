@@ -817,11 +817,11 @@ set xtics rotate
 								if len(name)>19 : # RRD Limitation
 									name = name[0:18]
 								rrdtool.create(  rrddatabasefile ,\
-												 '--step', '3600', '--no-overwrite','--start', '1356998400',	# step 1h \
+												 '--step', '21600', '--no-overwrite','--start', '1356998400',	# step 6h \
 												 'DS:'+ name +':GAUGE:172800:U:U', 								# heartbeat 48h \
-												 'RRA:AVERAGE:0.9:1:744',										# 1 daily sample for 1 month \
-												 'RRA:AVERAGE:0.9:168:52',										# 1 week average for 1 year  \
-												 'RRA:AVERAGE:0.9:744:24' 										# 1 month average for 2 years\
+												 'RRA:AVERAGE:0.9:1:124',										# keep one sample every 6 hour for 1 month \
+												 'RRA:AVERAGE:0.9:28:52',										# 1 week average for 1 year  \
+												 'RRA:AVERAGE:0.9:124:24' 										# 1 month average for 2 years\
 											   )																
 						else:
 							rrd=False
