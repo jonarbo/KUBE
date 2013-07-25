@@ -1443,7 +1443,7 @@ set xtics rotate
 			
 #####################################################################                                           
 #
-#	Print Config info functions (view command)
+#	Print Config info functions (list command)
 #
 #####################################################################   
 	def view(self, item=None, name=None ):

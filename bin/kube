@@ -15,19 +15,20 @@ kube <COMMAND> <OPTIONS>
 
 Some <OPTIONS> are specific to some <COMMANDS>: 
 -----------------------------------------------
-kube clean   [-d {runs,results}] [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS] [--since SINCE] [--to TO]
-kube view    [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS]
+kube list    [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS]
 kube run     [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS] [--log FILE]
 kube refine  [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS] [--since SINCE] [--to TO] [--log FILE] [--rrd] [--force]
-kube probe   -t DIR [-p] [-m METRIC_NAMES] [--since SINCE] [--to TO] 
-kube probe   -b BASE_DIR [-p] [--target DIR] [-m METRIC_NAMES] { [--since SINCE] [--to TO] , [--at DATE] } }
+kube graph   -t DIR [-p] [-m METRIC_NAMES] [--since SINCE] [--to TO] 
+kube graph   -b BASE_DIR [-p] [--target DIR] [-m METRIC_NAMES] { [--since SINCE] [--to TO] , [--at DATE] } }
+kube clean   -d {runs,results} [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS] [--since SINCE] [--to TO]
+kube distclean
 """		
 
 		self.help=\
 """
 Commands allowed in KUBE:
 -------------------------
-	{clean,view,run,refine,probe}
+	{list,run,refine,graph,clean,distclean}
                         
 optional arguments:
 -------------------
@@ -51,33 +52,33 @@ optional arguments:
                         config file will be processed. This option may accept
                         a comma-separated list if multiple apps need to be
                         selected. Use 'all' to select everything. It is
-                        allowed in the following commands: 'run', 'view',
+                        allowed in the following commands: 'run', 'list',
                         'refine'
   -n NETS               Option used to select which network benchmark from the
                         config file will be processed. This option may accept
                         a comma-separated list if multiple apps need to be
                         selected. Use 'all' to select everything. It is
-                        allowed in the following commands: 'run', 'view',
+                        allowed in the following commands: 'run', 'list',
                         'refine'
   -f FILESYS            Option used to select which filesystem benchmark from
                         the config file will be processed. This option may
                         accept a comma-separated list if multiple apps need to
                         be selected. Use 'all' to select everything. It is
-                        allowed in the following commands: 'run', 'view',
+                        allowed in the following commands: 'run', 'list',
                         'refine'
   -s SYNTHS             Option used to select which synthetic benchmark from
                         the config file will be processed. This option may
                         accept a comma-separated list if multiple apps need to
                         be selected. Use 'all' to select everything. It is
-                        allowed in the following commands: 'run', 'view',
+                        allowed in the following commands: 'run', 'list',
                         'refine'
-  -t DIR                Option to be used with the 'probe' command to select the
+  -t DIR                Option to be used with the 'graph' command to select the
                         time analysis. The value expected is the path to the
                         dir containing the post-processed runs
   -m METRIC_NAMES       For the time and metrics analysis one or more metrics can be
                         selected using this option. A comma-separated list is
                         used for multiple metrics selection
-  -b BASE_DIR           Option to be used with the 'probe' command to select the
+  -b BASE_DIR           Option to be used with the 'graph' command to select the
                         box plot metrics graph analysis
   --target DIR          For the metrics graph analysis you may want to specify a dir 
                         path which contains one or many runs information to compare
@@ -120,7 +121,7 @@ if __name__ == "__main__":
 		sys.exit(1)
  
 	# Commands allowed by kube:
-	parser.add_argument("command", choices=['clean','run','view','refine','probe'] , help='Commands allowed by KUBE')
+	parser.add_argument("command", choices=['distclean','clean','run','list','refine','graph'] , help='Commands allowed by KUBE')
 
 	# options to set initial and end time when needed. The format is YYY-MM-DD
 	parser.add_argument("--since", help='Option to set the initial time when needed.' )
@@ -131,15 +132,15 @@ if __name__ == "__main__":
 	
 	parser.add_argument("-d", choices=['runs','results'], help='Option to specify which directory is to be cleaned when the \'clean\' command is used' )
 
-	parser.add_argument("-a" , help='Option to select which apps benchmark from the config file will be processed. This option may accept a comma-separated list if multiple apps need to be selected. Use \'all\' to select everything. It is allowed in the following commands: \'run\', \'view\', \'refine\'', dest='apps')
-	parser.add_argument("-n" , help='Option to select which network benchmark from the config file will be processed. This option may accept a comma-separated list if multiple apps need to be selected. Use \'all\' to select everything. It is allowed in the following commands: \'run\', \'view\', \'refine\'', dest='nets')
-	parser.add_argument("-f" , help='Option to select which filesystem benchmark from the config file will be processed. This option may accept a comma-separated list if multiple apps need to be selected. Use \'all\' to select everything. It is allowed in the following commands: \'run\', \'view\', \'refine\'', dest='filesys')
-	parser.add_argument("-s" , help='Option used to select which synthetic benchmark from the config file will be processed. This option may accept a comma-separated list if multiple apps need to be selected. Use \'all\' to select everything. It is allowed in the following commands: \'run\', \'view\', \'refine\'', dest='synths')
+	parser.add_argument("-a" , help='Option to select which apps benchmark from the config file will be processed. This option may accept a comma-separated list if multiple apps need to be selected. Use \'all\' to select everything. It is allowed in the following commands: \'run\', \'list\', \'refine\'', dest='apps')
+	parser.add_argument("-n" , help='Option to select which network benchmark from the config file will be processed. This option may accept a comma-separated list if multiple apps need to be selected. Use \'all\' to select everything. It is allowed in the following commands: \'run\', \'list\', \'refine\'', dest='nets')
+	parser.add_argument("-f" , help='Option to select which filesystem benchmark from the config file will be processed. This option may accept a comma-separated list if multiple apps need to be selected. Use \'all\' to select everything. It is allowed in the following commands: \'run\', \'list\', \'refine\'', dest='filesys')
+	parser.add_argument("-s" , help='Option used to select which synthetic benchmark from the config file will be processed. This option may accept a comma-separated list if multiple apps need to be selected. Use \'all\' to select everything. It is allowed in the following commands: \'run\', \'list\', \'refine\'', dest='synths')
 
-	parser.add_argument("-t" , help='Option to be used with the \'probe\' command to select the time analysis. The value expected is the path to the dir containing the post-processed runs', dest='t')
+	parser.add_argument("-t" , help='Option to be used with the \'graph\' command to select the time analysis. The value expected is the path to the dir containing the post-processed runs', dest='t')
 	parser.add_argument("-m" , help='For the time analysis one or more metrics can be selected using this option. A comma-separated list is used for multiple metrics selection', dest='metric_name')
 
-	parser.add_argument("-b" , help='Option to be used with the \'probe\' command to select the metrics graph analysis',dest='b')
+	parser.add_argument("-b" , help='Option to be used with the \'graph\' command to select the metrics graph analysis',dest='b')
 	parser.add_argument("--target" , help='For the metrics graph analysis, select the target dir',dest='target')
 	parser.add_argument('-p', action='store_true', dest='p')
 	parser.add_argument('--rrd', action='store_true', dest='rrd')
@@ -149,25 +150,26 @@ if __name__ == "__main__":
 	
 	# Associating commands with options ... 	
 	commands_opt={\
+					'distclean':[] ,\
 					'clean':['d','since','to','apps','nets','filesys','synths'] ,\
 					'run':['apps','nets','filesys','synths','log'] ,\
-					'view':['apps','nets','filesys','synths','log'],\
+					'list':['apps','nets','filesys','synths','log'],\
 					'refine':['apps','nets','filesys','synths','since','to','log','rrd','force'] ,\
-					'probe':['t','b'] ,\
+					'graph':['t','b'] ,\
 	}
 	# sub-options associated to options
 	sub_opts= { 't':['metric_name','since','to','p'],'b':['metric_name','target','since','to','at','p'] }
 		
 	# get which command was invoked
 	command = args.command
-	
+
 	# all the options and the values given ...
 	options_dict = dict([ (a,args.__dict__[a]) for a in args.__dict__.keys() if args.__dict__[a]!=None and a!='command'] ) 
 	# Do the check if the command was invoked with the accepted options
 	accepted_opts = commands_opt[command] 
 
-	# remove 'p' if command is not probe
-	if command!='probe' and options_dict.keys().count('p')!=0:
+	# remove 'p' if command is not graph
+	if command!='graph' and options_dict.keys().count('p')!=0:
 		del options_dict['p']
 
 	# remove 'rrd' if command is not 'refine'
@@ -194,11 +196,8 @@ if __name__ == "__main__":
 			parser.print_usage()
 			sys.exit(1)			
 
-
-
-
-	# 't' and 'b' can not be together with 'probe' command	
-	if command == 'probe' and options_dict.keys().count('t')!=0  and options_dict.keys().count('b')!=0:
+	# 't' and 'b' can not be together with 'graph' command	
+	if command == 'graph' and options_dict.keys().count('t')!=0  and options_dict.keys().count('b')!=0:
 			print "-----------------------------------" 
 			print "wrong options given to the command: \'" + command +"\'"
 			print 
@@ -206,12 +205,28 @@ if __name__ == "__main__":
 			sys.exit(1)
 
 	# 'since' and 'to' can't be given along with 'at'
-	if command == 'probe' and  (( options_dict.keys().count('since')!=0  or options_dict.keys().count('to')!=0 ) and  options_dict.keys().count('at')!=0):
+	if command == 'graph' and  (( options_dict.keys().count('since')!=0  or options_dict.keys().count('to')!=0 ) and  options_dict.keys().count('at')!=0):
 			print "-----------------------------------" 
 			print "wrong options given to the command: \'" + command +"\'"
 			print 
 			parser.print_usage()
 			sys.exit(1)
+	
+	# 'clean' must be called with an argument
+	if command == 'clean' and len(options_dict.keys())==0:
+			print "-----------------------------------" 
+			print "arguments needed for command: \'" + command +"\'"
+			print 
+			parser.print_usage()
+			sys.exit(1)
+	
+	# 'distclean' must be called without arguments
+	if command == 'distclean' and len(options_dict.keys())!=0:
+			print "-----------------------------------" 
+			print "too many arguments for command: \'" + command +"\'"
+			print 
+			parser.print_usage()
+			sys.exit(1)	
 	
 	# for every option given, check if it is in the list of accepted ones ...
 	possible_invalid = []		
@@ -232,11 +247,12 @@ if __name__ == "__main__":
 		sys.exit(1)
 
 	callbacks = { \
-					'clean': clean.start , \
-					'run': run.start , \
-					'view': view.start , \
-					'refine': refine.start , \
-					'probe': probe.start \
+					'distclean': clean.start ,\
+					'clean':     clean.start , \
+					'run':       run.start , \
+					'list':      view.start , \
+					'refine':    refine.start , \
+					'graph':     graph.start \
 	}
 	#From Now on all the options are valid.	
 	callbacks[command](options_dict)
