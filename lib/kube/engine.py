@@ -144,10 +144,7 @@ class KUBE:
 
 		if template[len(template)-1] == '/':
 			template = template[:-1] 	
-			
-		if target and target[len(target)-1] == '/':
-			target = target[:-1] 	
-		
+
 		# set the legend from the run name:
 		template = os.path.abspath(template)	
 		title_rundate_template = os.path.basename(template)
@@ -161,21 +158,27 @@ class KUBE:
 		title_app_template = os.path.basename( os.path.dirname( os.path.dirname(title_runcase_template )) )
 		title_runcase_template = os.path.basename(title_runcase_template)
 		#legend.append( "Benchmark:"+title_app_template +" , Dataset:"+ title_dataset_template   +" , Run:"+ title_runcase_template)	
-		legend.append( title_dataset_template   +" => "+ title_runcase_template)	
-		
+		legend.append( title_dataset_template   +" => "+ title_runcase_template)			
+			
+		t = target.split(',')
 		u=[]
-		# filter directories by date
-		if target and os.path.isdir(target):
-			for d  in walkDir(target , to, delta):
-				u.append(d)
 		
+		for target in t:		
+			if target and target[len(target)-1] == '/':
+				target = target[:-1] 	
+	
+			# filter directories by date
+			if target and os.path.isdir(target):
+				for d  in walkDir(target , to, delta):
+					u.append(d)
+
 		if len(u) == 0 :
 			if target:	
 				#printer.plain("Reading data from target:")
 				if (os.path.isfile(target+"/analysis.raw")):
 					Printer.Level = 1
 					#printer.plain( printer.bold(target ))
-
+	
 				 	target = os.path.abspath(target)	
 					title_rundate_target = os.path.basename(target)
 					title_runcase_target=''
@@ -188,18 +191,19 @@ class KUBE:
 					title_app_target = os.path.basename( os.path.dirname( os.path.dirname(title_runcase_target )) )
 					title_runcase_target = os.path.basename(title_runcase_target)
 					#legend.append( "Benchmark:"+title_app_target +" , Dataset:"+ title_dataset_target   +" , Run:"+ title_runcase_target)						
-					legend.append( title_dataset_target   +" => "+ title_runcase_target)						
-					
+					legend.append( title_dataset_target   +" => "+ title_runcase_target)										
+				
 					if not os.path.exists(target+"/analysis.raw"):
 						printer.error("Data File not found","The file " + printer.bold( target+"/analysis.raw") + " could not be found" )
 						sys.exit(1)
 					tf = open(target+"/analysis.raw", 'r') 
 					ofc = tf.readline()
 					m_values.append([])
-					while ofc:
+					while ofc:					
 						line = ofc.split()
 						if lmetrics == None or  line[0] in lmetrics:
 							m_values[len(m_values)-1].append(line[2])
+							timestamp.append(line[3])
 						ofc = tf.readline()	
 					tf.close
 		else:
@@ -243,10 +247,10 @@ class KUBE:
 							m_values[len(m_values)-1].append(line[2])
 						ofc = tf.readline()	
 					tf.close
-
+	
 		if printToSTDOUT:
 			mnvalue = 0
-			if len(metrics)>1:
+			if len(metrics)>0:
 				for t in range(0,len(metrics)):			
 					printer.info("Metric",metrics[t])
 					for l in range(0,len(m_values)):

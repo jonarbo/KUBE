@@ -8,9 +8,9 @@ from kube.engine	import KUBE
 
 def start( args ):
 	""" 
-		Entry point for the 'refine' command.
+		Entry point for the 'update' command.
 		Synopsis:
-		kube.py refine  [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS] [--since SINCE] [--to TO] [--rrd] [--log FILE] [--force]
+		kube.py update  [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS] [--since SINCE] [--to TO] [--rrd] [--log FILE] [--force]
 	"""
 
 	# create the engine instance

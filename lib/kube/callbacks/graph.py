@@ -12,9 +12,9 @@ from kube.engine	import KUBE
 
 def start( args ):
 	""" 
-		Entry point for the 'graph' command.
+		Entry point for the 'plot' command.
 		Synopsis:
-		kube.py graph {-t DIR [-p] [-m METRIC_NAME] [--since SINCE] [--to TO] , -b BASE_DIR [-p] [--target DIR] { [--since SINCE] [--to TO], [--at DATE] }}
+		kube.py plot {-t DIR [-p] [-m METRIC_NAME] [--since SINCE] [--to TO] , -b BASE_DIR [-p] [--target DIR] { [--since SINCE] [--to TO], [--at DATE] }}
 	"""
 
 	# create the engine instance
@@ -60,7 +60,7 @@ def start( args ):
 		
 		
 	if 'b' in opts:
-		# metrics boxplot graph analysis
+		# metrics boxplot plot analysis
 		target = None
 		mname=None
 		at = None
