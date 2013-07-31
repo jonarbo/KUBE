@@ -212,13 +212,13 @@ if __name__ == "__main__":
 			parser.print_usage()
 			sys.exit(1)
 	
-	# 'clean' must be called with an argument
-	if command == 'clean' and len(options_dict.keys())==0:
-			print "-----------------------------------" 
-			print "arguments needed for command: \'" + command +"\'"
-			print 
-			parser.print_usage()
-			sys.exit(1)
+	# 'clean' must be called with an argument... FALSE: by default clean cleans runs
+	#if command == 'clean' and len(options_dict.keys())==0:
+	#		print "-----------------------------------" 
+	#		print "arguments needed for command: \'" + command +"\'"
+	#		print 
+	#		parser.print_usage()
+	#		sys.exit(1)
 	
 	# 'distclean' must be called without arguments
 	if command == 'distclean' and len(options_dict.keys())!=0:

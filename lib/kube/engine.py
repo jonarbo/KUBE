@@ -159,10 +159,13 @@ class KUBE:
 		title_runcase_template = os.path.basename(title_runcase_template)
 		#legend.append( "Benchmark:"+title_app_template +" , Dataset:"+ title_dataset_template   +" , Run:"+ title_runcase_template)	
 		legend.append( title_dataset_template   +" => "+ title_runcase_template)			
-			
-		t = target.split(',')
+
 		u=[]
-		
+		t=[]
+			
+		if target:	
+			t = target.split(',')
+
 		for target in t:		
 			if target and target[len(target)-1] == '/':
 				target = target[:-1] 	

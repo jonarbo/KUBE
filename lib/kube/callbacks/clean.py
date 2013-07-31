@@ -57,11 +57,13 @@ def start( args ):
 	
 	opts = args.keys()
 	if len(opts)==0:
-		printer.warning(header, Printer.bold("You are about to remove all stored results") )
+		# By default clean cleans the runs...
+		# printer.warning(header, Printer.bold("You are about to remove all stored results") )
+		printer.warning(header, "You are about to remove all runs in: " +  Printer.bold(cleaner['runs']) )
 		var = raw_input("Are you sure you want to do that? (Yes/No)")	
 		if var=="Yes":			
 			clean( cleaner['runs'] )
-			clean( cleaner['results'] )
+			#clean( cleaner['results'] )
  			printer.info( header, "Done." )
 		else:
 			printer.info( header, "cancelled" )
