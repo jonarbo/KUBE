@@ -2046,7 +2046,13 @@ set xtics rotate
 				sys.exit(1)
 			if nbatch['submit'] == None : 
 				printer.error("Config file error","'submit' tag in one of your BATCHs is empty")
-				sys.exit(1)	
+				sys.exit(1)
+			else:
+				if nbatch['submit'].keys().count('parameters')==0:
+					 nbatch['submit']['parameters'] = ' '
+				if nbatch['submit'].keys().count('submittedmsg')==0 and nbatch['name']!="MANUAL":
+					printer.error("Config file error","'submit' tag in one of your BATCHs is missing the field 'submittedmsg'")
+					sys.exit(1)
 			if  nbatch['name'] != "MANUAL" and nbatch['name']!=None:
 				if  nbatch.keys().count('script')==0:
 					printer.error("Config file error"," 'script' tag is mandatory in an a BATCH unless you name it as 'MANUAL'")
