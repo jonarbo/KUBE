@@ -1251,6 +1251,17 @@ set xtics rotate
 			Printer.Level = Printer.Level - 1	
 			return
 		
+		nnodes=[]
+		if dataset.keys().count('nodes')!=0 and dataset['nodes'] != None and  dataset['nodes'] != '':
+			nnodes = str(dataset['nodes']).split(',')	
+		
+		if len(nnodes)>1 and len(nnodes)!=len(nprocs):
+			printer.warning("Misleading procs/nodes configuration found in", printer.bold( str( dataset['name'] )) + " ... skipped")
+			Printer.Level = Printer.Level - 1	
+			return
+
+		nodesdict = dict(zip(nprocs, nnodes))
+
 		printer.plain(printer.bold("---------------------------------------------------------"))
 		for p in nprocs:
 			p = p.strip()
@@ -1271,8 +1282,11 @@ set xtics rotate
 					n = str( int(round(float(p)/float(dataset['tasks_per_node'])+0.5))  )			
 				#run_id = dataset['name'] + "_" + p + "cpus_" + n + "nodes_"  + str(newname)					
 				run_id =  p + "cpus_" + n + "nodes/"  + str(newname)					
-			else:
-				#run_id = dataset['name'] + "_" + p + "cpus_"  + str(newname)
+			elif len(nnodes)==1:
+				run_id =  p + "cpus_" + str(nnodes[0]) + "nodes/"  + str(newname)					
+			elif len(nnodes)>1:
+				run_id =  p + "cpus_" + str(nodesdict[p]) + "nodes/"  + str(newname)					
+			else:	
 				run_id =  p + "cpus/"  + str(newname)
 			
 			printer.info( "Run ID" , printer.bold( run_id) + " ... ", wait="true" ) 
@@ -1302,8 +1316,11 @@ set xtics rotate
 						n = str( int(round(float(p)/float(dataset['tasks_per_node'])+0.5))  )								
 					#run_id = dataset['name'] + "_" + p + "cpus_" + n + "nodes_"  + str(newname)					
 					run_id = p + "cpus_" + n + "nodes/"  + str(newname)					
+				elif len(nnodes)==1:
+					run_id =  p + "cpus_" + str(nnodes[0]) + "nodes/"  + str(newname)
+				elif len(nnodes)>1:
+					run_id =  p + "cpus_" + str(nodesdict[p]) + "nodes/"  + str(newname)
 				else:
-					#run_id = dataset['name'] + "_" + p + "cpus_"  + str(newname)
 					run_id =  p + "cpus/"  + str(newname)
 				Printer.Level = Printer.Level - 1
 			
@@ -1463,6 +1480,11 @@ set xtics rotate
 			
 		if item == None: # means show the global configuration	
 	
+			#self.__readApps(yaml_conf)
+			#self.__readNets(yaml_conf)
+			#self.__readSynthetics(yaml_conf)
+			#self.__readFilesystems(yaml_conf)
+
 			printer.info("KUBE Home",self.home )
 			printer.info("KUBE Runs",self.runs_dir )
 			printer.info("KUBE Results",self.results_dir )
@@ -1603,7 +1625,7 @@ set xtics rotate
 					Printer.Level = Printer.Level + 1
 					printer.info("dataset",str( who[k][l]['name']))
 					for litem in  who[k][l]:
-						if litem == 'numprocs' or litem == 'tasks_per_node' or litem == 'exe' or litem == 'args' or litem == 'batch' and  not re.match("#\d+#",litem):
+						if litem == 'numprocs' or litem == 'nodes' or litem == 'tasks_per_node' or litem == 'exe' or litem == 'args' or litem == 'batch' and  not re.match("#\d+#",litem):
 							Printer.Level = Printer.Level + 1
 							printer.info(litem ,str( who[k][l][litem])  )
 							Printer.Level = Printer.Level - 1
@@ -1725,10 +1747,37 @@ set xtics rotate
 								else:
 									dataset[sk] = "" 		
 						if dataset.keys().count('numprocs')==0 :
-							printer.error("Config file error"," Dataset of " + printer.bold(appname) + " found without 'numprocs'. This tag is mandatory!!!") 
-							printer.error("Please revise your configuration file !!!")
-							sys.exit(1)	
-						elif dataset.keys().count('outputs')==0 :
+							# if there is no numprocs, at least tasks_per_node and nodes are needed
+							if dataset.keys().count('tasks_per_node')==0 and  dataset.keys().count('nodes')==0:
+								printer.error("Config file error"," Cannot figure out the number of tasks to run for " + printer.bold(appname) + " use either 'numprocs' or a combination of 'nodes' and 'tasks_per_run'!!!") 
+								printer.error("Please revise your configuration file !!!")
+								sys.exit(1)
+							elif dataset.keys().count('tasks_per_node')!=0 and  dataset.keys().count('nodes')!=0:	
+								numprocs_str=''
+								for n in   ("".join(dataset['nodes'].split())).split(','): 
+									numprocs_str = numprocs_str + ',' +  str( int(dataset['tasks_per_node'])*int(n) )	
+								dataset['numprocs'] = numprocs_str[1:]	
+							else:
+								printer.error("Config file error"," Cannot figure out the number of tasks to run for " + printer.bold(appname) +" !!!") 
+								printer.error("Please revise your configuration file !!!")
+								sys.exit(1)
+						else:
+							nprocs = str(dataset['numprocs']).split(',')
+							if len(nprocs) == 0:
+								printer.error("No procs found in", printer.bold( str( dataset['name'] )) )
+								printer.error("Please revise your configuration file !!!")
+								sys.exit(1)
+
+							nnodes=[]
+							if dataset.keys().count('nodes')!=0 and dataset['nodes'] != None and  dataset['nodes'] != '':
+								nnodes = str(dataset['nodes']).split(',')
+								if len(nnodes)>1 and len(nnodes)!=len(nprocs):
+									printer.error("Misleading procs/nodes configuration found in", printer.bold( str( dataset['name'] )) )
+									printer.error("Please revise your configuration file !!!")
+									sys.exit(1)
+								
+							
+						if dataset.keys().count('outputs')==0 :
 							printer.error("Config file error"," Dataset of " + printer.bold(appname) + " found without 'outputs'. This tag is mandatory!!!") 
 							printer.error("Please revise your configuration file !!!")
 							sys.exit(1)	
@@ -1945,12 +1994,41 @@ set xtics rotate
 									dataset[sk] = copy.deepcopy(a[sk])
 								else:
 									dataset[sk] = "" 		
-
 						if dataset.keys().count('numprocs')==0 :
-							printer.error("Config file error"," Dataset of " + printer.bold(aname) + " found without 'numprocs'. This tag is mandatory!!!") 
-							printer.error("Please revise your configuration file !!!")
-							sys.exit(1)	
-						elif dataset.keys().count('outputs')==0 :
+                                                        # if there is no numprocs, at least tasks_per_node and nodes are needed
+                                                        if dataset.keys().count('tasks_per_node')==0 and  dataset.keys().count('nodes')==0:
+                                                                printer.error("Config file error"," Cannot figure out the number of tasks to run for " + printer.bold(aname) + " use either 'numprocs' or a  combination of 'nodes' and 'tasks_per_run'!!!") 
+                                                                printer.error("Please revise your configuration file !!!")
+                                                                sys.exit(1)
+                                                        elif dataset.keys().count('tasks_per_node')!=0 and  dataset.keys().count('nodes')!=0:
+                                                                numprocs_str=''
+                                                                for n in   ("".join(dataset['nodes'].split())).split(','):
+                                                                        numprocs_str = numprocs_str +',' +  str( int(dataset['tasks_per_node'])*int(n) )
+                                                                dataset['numprocs'] = numprocs_str[1:]
+                                                        else:
+                                                                printer.error("Config file error"," Cannot figure out the number of tasks to run for " + printer.bold(aname) +" !!!")
+                                                                printer.error("Please revise your configuration file !!!")
+                                                                sys.exit(1)
+
+							#printer.error("Config file error"," Dataset of " + printer.bold(aname) + " found without 'numprocs'. This tag is mandatory!!!") 
+							#printer.error("Please revise your configuration file !!!")
+							#sys.exit(1)	
+						else:
+							nprocs = str(dataset['numprocs']).split(',')
+							if len(nprocs) == 0:
+								printer.error("No procs found in", printer.bold( str( dataset['name'] )) )
+								printer.error("Please revise your configuration file !!!")
+								sys.exit(1)
+
+							nnodes=[]
+							if dataset.keys().count('nodes')!=0 and dataset['nodes'] != None and  dataset['nodes'] != '':
+								nnodes = str(dataset['nodes']).split(',')
+								if len(nnodes)>1 and len(nnodes)!=len(nprocs):
+									printer.error("Misleading procs/nodes configuration found in", printer.bold( str( dataset['name'] )) )
+									printer.error("Please revise your configuration file !!!")
+									sys.exit(1)
+
+						if dataset.keys().count('outputs')==0 :
 							printer.error("Config file error"," Dataset of " + printer.bold(aname) + " found without 'outputs'. This tag is mandatory!!!") 
 							printer.error("Please revise your configuration file !!!")
 							sys.exit(1)	
