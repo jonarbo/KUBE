@@ -1,0 +1,15 @@
+#!/bin/bash -l
+
+#PBS -l nodes=%NODES%:ppn=12
+#PBS -l walltime=%WALLCLOCK%
+#PBS -N %NAME%
+#PBS -e localhost:$PBS_O_WORKDIR/KUBE_%NAME%_%NUMPROCS%.out
+#PBS -o localhost:$PBS_O_WORKDIR/KUBE_%NAME%_%NUMPROCS%.err
+#PBS -q %QUEUE%
+
+module purge
+%MODULES% 
+
+%LAUNCHER% %LAUNCHER_FLAGS% %EXE% %ARGS%  
+
+
