@@ -13,6 +13,8 @@ import shutil
 import datetime, time
 import math
 import copy
+from collections import defaultdict
+
 
 # get the path to the current script
 cmd_folder = os.path.abspath(os.path.split(inspect.getfile( inspect.currentframe() ))[0])
@@ -505,6 +507,11 @@ set xtics rotate
 		""" Runs the refine stage for a given 'item' and 'name' 
 		"""
 		if item == None: # means analyze everything	
+			self.__readApps()
+			self.__readNets()
+			self.__readSynthetics()
+			self.__readFilesystems()
+
 			for app in self.a_apps:
 					self.__refineApp(app,To,Delta,rrd,force)
 			for net in self.a_nets:
@@ -518,6 +525,7 @@ set xtics rotate
 			printer.plain(printer.bold("***********************************************"))
 			printer.plain(printer.bold("***")+"   KUBE refine stage for selected Apps:  " + printer.bold("***"))
 			printer.plain(printer.bold("***********************************************"))
+			self.__readApps()
 			if name and self.a_apps.keys().count(name) == 0:
 				printer.warning( "Warning", "Application " +  printer.bold( name ) + " not found or not active"	)
 				return
@@ -531,6 +539,7 @@ set xtics rotate
 			printer.plain(printer.bold("***********************************************"))
 			printer.plain(printer.bold("***") + "     KUBE refine stage for Networks:     "+printer.bold("***"))
 			printer.plain(printer.bold("***********************************************"))
+			self.__readNets()
 			if name and self.a_nets.keys().count(name) == 0:
 				printer.warning( "Warning", "Network " +  printer.bold( name ) + " not found or not active"	)
 				return
@@ -544,6 +553,7 @@ set xtics rotate
 			printer.plain(printer.bold("***********************************************"))
 			printer.plain(printer.bold("***")+"     KUBE refine stage for Filesystems:  " +printer.bold("***"))
 			printer.plain(printer.bold("***********************************************"))
+			self.__readFilesystems()
 			if name and  self.a_filesys.keys().count(name) == 0:
 				printer.warning( "Warning", "Filesystem " +  printer.bold( name ) + " not found or not active"	)
 				return
@@ -557,6 +567,7 @@ set xtics rotate
 			printer.plain(printer.bold("***********************************************"))
 			printer.plain(printer.bold("***")+"     KUBE refine stage for  Synthetics:  "+printer.bold("***"))
 			printer.plain(printer.bold("***********************************************"))
+			self.__readSynthetics()
 			if name and self.a_synths.keys().count(name) == 0:
 				printer.warning( "Warning", "Benchmark " +  printer.bold( name ) + " not found or not active"	)
 				return
@@ -1090,7 +1101,13 @@ set xtics rotate
 	def run(self,item=None,name=None):
 		""" Runs a given 'name' benchmark from 'item'
 		"""
+
 		if item == None: # means run everything			
+			self.__readApps()
+			self.__readNets()
+			self.__readSynthetics()
+			self.__readFilesystems()
+
 			for app in self.a_apps:
 					self.__runApp(app)
 			for net in self.a_nets:
@@ -1104,6 +1121,7 @@ set xtics rotate
 			printer.plain(printer.bold("********************************************"))			
 			printer.plain(printer.bold("***")+"  Running KUBE for selected Apps:     "+ printer.bold("***"))
 			printer.plain(printer.bold("********************************************"))
+			self.__readApps()
 			if name and self.a_apps.keys().count(name) == 0:
 				printer.warning("Warning","Application " +  printer.bold(name) + " not found or not active"	)
 				return		
@@ -1117,6 +1135,7 @@ set xtics rotate
 			printer.plain(printer.bold("********************************************"))			
 			printer.plain(printer.bold("***")+"  Running KUBE for selected Networks: "+printer.bold("***"))
 			printer.plain(printer.bold("********************************************"))
+			self.__readNets()
 			if name  and self.a_nets.keys().count(name) == 0:
 				printer.warning("Warning","Network " +  printer.bold(name) + " not found or not active"	)
 				return		
@@ -1130,6 +1149,7 @@ set xtics rotate
 			printer.plain(printer.bold("*********************************************"))
 			printer.plain(printer.bold("***")+" Running KUBE for selected Filesystem: "+printer.bold("***"))
 			printer.plain(printer.bold("*********************************************"))
+			self.__readFilesystems()
 			if name  and self.a_filesys.keys().count(name) == 0:
 				printer.warning("Warning","Filesystem " +  printer.bold(name) + " not found or not active"	)
 				return		
@@ -1143,6 +1163,7 @@ set xtics rotate
 			printer.plain(printer.bold("**********************************************"))			
 			printer.plain(printer.bold("***")+"  Running KUBE for selected Synthetics: "+printer.bold("***"))
 			printer.plain(printer.bold("**********************************************"))
+			self.__readSynthetics()
 			print name, self.a_synths.keys()
 			if name  and self.a_synths.keys().count(name) == 0:
 				printer.warning("Warning","Benchmark " +  printer.bold(name) + " not found or not active"	)
@@ -1239,13 +1260,23 @@ set xtics rotate
 			Printer.Level = Printer.Level - 1
 			
 	def __runDataset(self,dataset,source,t, isApp ):
-		############# 
+		#########################################################################  
+		#  
 		# Run dataset
-		#############
+		#
+		#########################################################################  
 		now = datetime.datetime.now()
 		newname = str(now.strftime("%Y-%m-%dT%Hh%Mm%Ss"))
 
 		nprocs = str(dataset['numprocs']).split(',')
+		try:
+			nprocs = map(int,nprocs)
+		except:
+			printer.warning("No procs found in", printer.bold( str( dataset['name'] )))
+			printer.warning("Apparently the procs number is not a valid integer ... skipped")
+			Printer.Level = Printer.Level - 1	
+			return
+			
 		if len(nprocs) == 0:
 			printer.warning("No procs found in", printer.bold( str( dataset['name'] )) + " ... skipped")
 			Printer.Level = Printer.Level - 1	
@@ -1254,216 +1285,241 @@ set xtics rotate
 		nnodes=[]
 		if dataset.keys().count('nodes')!=0 and dataset['nodes'] != None and  dataset['nodes'] != '':
 			nnodes = str(dataset['nodes']).split(',')	
+		try:
+			nnodes = map(int,nnodes)
+		except:
+			printer.warning("No procs found in", printer.bold( str( dataset['name'] )))
+			printer.warning("Apparently the nodes number is not a valid integer ... skipped")
+			Printer.Level = Printer.Level - 1	
+			return
+
+		if len(nnodes)==1 and len(nprocs)!=1:
+			nnodes =  nnodes*len(nprocs)
 		
+		if len(nprocs)==1 and len(nnodes)!=1:
+			nprocs =  nprocs*len(nnodes)
+
 		if len(nnodes)>1 and len(nnodes)!=len(nprocs):
 			printer.warning("Misleading procs/nodes configuration found in", printer.bold( str( dataset['name'] )) + " ... skipped")
 			Printer.Level = Printer.Level - 1	
 			return
 
-		nodesdict = dict(zip(nprocs, nnodes))
-
+		nodesdict = defaultdict(list)
+		for p,n in zip(nprocs, nnodes) :
+			nodesdict[p].append(n)
+		
+		print nodesdict.items()
+		print nprocs
+		print nnodes
+		
+		if len(nodesdict)!=0:
+			nprocs = nodesdict.keys()
+					
 		printer.plain(printer.bold("---------------------------------------------------------"))
 		for p in nprocs:
-			p = p.strip()
-			try:
-				if int(p)==0:
-					printer.warning("No valid proc found in" , printer.bold( str( dataset['name'] ))  + " ... skipped")
-					Printer.Level = Printer.Level - 1	
-					return
-			except:
-				printer.warning("No valid proc found in" , printer.bold( str( dataset['name'] ))  + " ... skipped")
-				Printer.Level = Printer.Level - 1	
-				return
-				
-			if dataset.keys().count('tasks_per_node')!=0 and dataset['tasks_per_node'] != None and  dataset['tasks_per_node'] != '':
-				if ( int(p)%int(dataset['tasks_per_node'])) == 0 :
-					n = str( int(( float(p)/float(dataset['tasks_per_node'])))  )	
-				else:
-					n = str( int(round(float(p)/float(dataset['tasks_per_node'])+0.5))  )			
-				#run_id = dataset['name'] + "_" + p + "cpus_" + n + "nodes_"  + str(newname)					
-				run_id =  p + "cpus_" + n + "nodes/"  + str(newname)					
-			elif len(nnodes)==1:
-				run_id =  p + "cpus_" + str(nnodes[0]) + "nodes/"  + str(newname)					
-			elif len(nnodes)>1:
-				run_id =  p + "cpus_" + str(nodesdict[p]) + "nodes/"  + str(newname)					
-			else:	
-				run_id =  p + "cpus/"  + str(newname)
-			
-			printer.info( "Run ID" , printer.bold( run_id) + " ... ", wait="true" ) 
-#			Printer.Level = Printer.Level + 1
-			waiting = True
-						
-			# change dir name to identify as an unique outcome	
-			if os.path.isdir( run_id ):
-				if waiting:
-					printer.info("") # remove the wait flag
-					waiting = None
-				Printer.Level = Printer.Level + 1				
-				printer.warning("Directory already exists" ,   printer.bold(run_id) + ". Trying to run the same dataset in less than a second.")
-				printer.info("Delaying a second ...",wait="true")
-				oLevel = Printer.Level
-				Printer.Level = 0
-				sys.stdout.flush()		 
-				time.sleep( 1 )
-				printer.info( "Resuming" ) 
-				Printer.Level = oLevel
-				now = datetime.datetime.now()
-				newname = str(now.strftime("%Y-%m-%dT%Hh%Mm%Ss"))
+			if len(nnodes)>1:
+				run_id =[]
+				for n in nodesdict[p]:
+					run_id.append( str(p) + "cpus_" + str(n) + "nodes/"  + str(newname))						
+			else:			
 				if dataset.keys().count('tasks_per_node')!=0 and dataset['tasks_per_node'] != None and  dataset['tasks_per_node'] != '':
-					if ( int(p)%int(dataset['tasks_per_node'])) == 0 :
+					if ( p%int(dataset['tasks_per_node'])) == 0 :
 						n = str( int(( float(p)/float(dataset['tasks_per_node'])))  )	
 					else:
-						n = str( int(round(float(p)/float(dataset['tasks_per_node'])+0.5))  )								
+						n = str( int(round(float(p)/float(dataset['tasks_per_node'])+0.5))  )			
 					#run_id = dataset['name'] + "_" + p + "cpus_" + n + "nodes_"  + str(newname)					
-					run_id = p + "cpus_" + n + "nodes/"  + str(newname)					
+					run_id =  str(p) + "cpus_" + n + "nodes/"  + str(newname)					
 				elif len(nnodes)==1:
-					run_id =  p + "cpus_" + str(nnodes[0]) + "nodes/"  + str(newname)
-				elif len(nnodes)>1:
-					run_id =  p + "cpus_" + str(nodesdict[p]) + "nodes/"  + str(newname)
-				else:
-					run_id =  p + "cpus/"  + str(newname)
+					run_id =  str(p) + "cpus_" + str(nnodes[0]) + "nodes/"  + str(newname)					
+				else:	
+					run_id =  str(p) + "cpus/"  + str(newname)
+			
+			if isinstance(run_id,list):
+				for runid in run_id:
+					print runid
+				continue
+			else:
+				print run_id
+				
+				printer.info( "Run ID" , printer.bold( run_id) + " ... ", wait="true" ) 
+				waiting = True
+			
+				# change dir name to identify as an unique outcome	
+				if os.path.isdir( run_id ):
+					if waiting:
+						printer.info("") # remove the wait flag
+						waiting = None
+					Printer.Level = Printer.Level + 1				
+					printer.warning("Directory already exists" ,   printer.bold(run_id) + ". Trying to run the same dataset in less than a second.")
+					printer.info("Delaying a second ...",wait="true")
+					oLevel = Printer.Level
+					Printer.Level = 0
+					sys.stdout.flush()		 
+					time.sleep( 1 )
+					printer.info( "Resuming" ) 
+					Printer.Level = oLevel
+					now = datetime.datetime.now()
+					
+					newname = str(now.strftime("%Y-%m-%dT%Hh%Mm%Ss"))
+					if dataset.keys().count('tasks_per_node')!=0 and dataset['tasks_per_node'] != None and  dataset['tasks_per_node'] != '':
+						if ( int(p)%int(dataset['tasks_per_node'])) == 0 :
+							n = str( int(( float(p)/float(dataset['tasks_per_node'])))  )	
+						else:
+							n = str( int(round(float(p)/float(dataset['tasks_per_node'])+0.5))  )								
+						#run_id = dataset['name'] + "_" + p + "cpus_" + n + "nodes_"  + str(newname)					
+						run_id = p + "cpus_" + n + "nodes/"  + str(newname)					
+					elif len(nnodes)==1:
+						run_id =  p + "cpus_" + str(nnodes[0]) + "nodes/"  + str(newname)
+					elif len(nnodes)>1:
+						run_id =  p + "cpus_" + str(nodesdict[p]) + "nodes/"  + str(newname)
+					else:
+						run_id =  p + "cpus/"  + str(newname)
+			
+				print run_id
+				
 				Printer.Level = Printer.Level - 1
-			
-			shutil.copytree(  dataset['name'] , run_id )		
-
-			# get the script or the command to run it
-			data = self.__getBatchScript(dataset,p.strip()) 
-			
-			rpath = t + run_id 
-			os.chdir(rpath)  
-			
-			if not isApp:
-				files = None
-				exe = None
-			
-				#see if there is any #PROCS# field
-				if  dataset.keys().count("#"+str(p)+"#dependencies") != 0:
-					files = dataset['#'+str(p)+'#dependencies']
-				elif dataset.keys().count("dependencies") != 0 :
-					files = dataset['dependencies']
-					
-				if 	dataset.keys().count("#"+str(p)+"#exe") != 0:
-					exe = dataset['#'+str(p)+'#exe']
-				elif dataset.keys().count("exe") != 0 :
-					exe = dataset['exe']
-					
-				# Now copy files  if any				
-				if files != None:	
-					inputs = str(files).split(',')
-					for input in inputs:
-						if input != 'None' and input != "" and input != "u''":
-							input = input.strip()
+				shutil.copytree(  dataset['name'] , run_id )		
+				# get the script or the command to run it
+				data = self.__getBatchScript(dataset,p) 
+		
+				rpath = t + run_id 
+				print rpath	
+				continue	
+				os.chdir(rpath)  
+		
+				if not isApp:
+					files = None
+					exe = None
+				
+					#see if there is any #PROCS# field
+					if  dataset.keys().count("#"+str(p)+"#dependencies") != 0:
+						files = dataset['#'+str(p)+'#dependencies']
+					elif dataset.keys().count("dependencies") != 0 :
+						files = dataset['dependencies']
+						
+					if 	dataset.keys().count("#"+str(p)+"#exe") != 0:
+						exe = dataset['#'+str(p)+'#exe']
+					elif dataset.keys().count("exe") != 0 :
+						exe = dataset['exe']
+						
+					# Now copy files  if any				
+					if files != None:	
+						inputs = str(files).split(',')
+						for input in inputs:
+							if input != 'None' and input != "" and input != "u''":
+								input = input.strip()
+								if waiting:
+									printer.info("") # remove the wait flag
+									waiting = None
+								Printer.Level = Printer.Level + 1
+								printer.info( "Copying dependency file" , printer.bold( str(input) )  + " into run directory")
+								# input is always relative to the 'source' directory
+								if not os.path.exists( os.path.dirname("./" + input )) :
+									os.makedirs( os.path.dirname("./" + input ) )
+								file = glob.glob(os.path.join( source + dataset['name']+ '/'  , input))
+								for f in file:
+									shutil.copy( f ,os.path.dirname("./" + input )  )
+								Printer.Level = Printer.Level - 1
+								
+					if not re.match("/",exe): # Is not in full path format
+						if  os.path.exists(source + dataset['name']+ '/' + exe ):
+							if not os.path.exists( os.path.dirname("./" + exe)) :
+								os.makedirs( os.path.dirname("./" + exe ) )
+							if not os.path.isfile( "./" + exe ):	
+								shutil.copy( source + dataset['name']+ '/' + exe , "./" + exe)
+						else:
 							if waiting:
 								printer.info("") # remove the wait flag
 								waiting = None
-							Printer.Level = Printer.Level + 1
-							printer.info( "Copying dependency file" , printer.bold( str(input) )  + " into run directory")
-							# input is always relative to the 'source' directory
-							if not os.path.exists( os.path.dirname("./" + input )) :
-								os.makedirs( os.path.dirname("./" + input ) )
-							file = glob.glob(os.path.join( source + dataset['name']+ '/'  , input))
-							for f in file:
-								shutil.copy( f ,os.path.dirname("./" + input )  )
+							Printer.Level = Printer.Level + 1							
+							printer.warning("File not found","Can't copy exe file. Plese check the benchmark and the configuration file")
 							Printer.Level = Printer.Level - 1
-							
-				if not re.match("/",exe): # Is not in full path format
-					if  os.path.exists(source + dataset['name']+ '/' + exe ):
-						if not os.path.exists( os.path.dirname("./" + exe)) :
-							os.makedirs( os.path.dirname("./" + exe ) )
-						if not os.path.isfile( "./" + exe ):	
-							shutil.copy( source + dataset['name']+ '/' + exe , "./" + exe)
+							sys.exit(1)
+				
+				failed = False			
+				# submit or run job
+				if  dataset.keys().count('batch')==0 or dataset['batch'] == 'None' :
+					# No batch system found .... 
+					syscall( data, False )
+					tops = data.split("|")[0].split()
+					Printer.Level = Printer.Level + 1		
+					if waiting:
+						printer.info("") # remove the wait flag
+						waiting = None		
+					printer.info("Running"," ".join(tops))
+					checkcmd = "ps -fea | grep \"" + " ".join(tops)  + "\" | grep -v grep  | wc -l "				
+					out,err = syscall (checkcmd)
+					if str(out).strip().isdigit():
+						printer.info( "Instances" , str(out).strip()  )
+					else:
+						printer.error("Command line execution","It seems the task is not running, please confirm it yourself.")
+					Printer.Level = Printer.Level + 1	
+
+				elif  dataset['batch'] == "MANUAL":
+					syscall( data )
+				else:
+					o = open( "run.batch","w")		
+									
+					o.write(data)
+					o.flush()
+					o.close		
+					# get the batch system submission commands	
+					mybatch = self.__getBatchSystem(dataset)
+					if mybatch == None:
+						if waiting:
+							printer.info("") # remove the wait flag
+							waiting = None
+						Printer.Level = Printer.Level + 1	
+						printer.error("Batch system error","Could not find any valid Batch system.")
+						Printer.Level = Printer.Level - 1			
+						sys.exit(1)
+						
+					submit_cmd = mybatch['submit']['command']
+					submit_params = mybatch['submit']['parameters']	
+					
+					if submit_params=="<":
+						cmd =  " cat run.batch |  " + submit_cmd
+					else:
+						cmd = submit_cmd + " " + submit_params + " run.batch"
+					
+					out,err = syscall( cmd )								
+					sopattern = mybatch['submit']['submittedmsg']
+					sopattern = sopattern.replace("%JOBID%","(\d+)")
+					mobj = re.search(sopattern,out)
+					if mobj:
+						jobid = mobj.group(1)
+						cmd = "touch batch.jobid." + jobid
+						syscall( cmd )
+						oLevel = Printer.Level
+						if waiting:
+								Printer.Level = 0
+								printer.info("Submitted")
+								Printer.Level = oLevel
+						else:
+							Printer.Level = Printer.Level + 1
+							printer.info("Submitted")
+							Printer.Level = Printer.Level - 1
 					else:
 						if waiting:
 							printer.info("") # remove the wait flag
 							waiting = None
-						Printer.Level = Printer.Level + 1							
-						printer.warning("File not found","Can't copy exe file. Plese check the benchmark and the configuration file")
+						Printer.Level = Printer.Level + 1	
+						printer.error("Warning","It seems there was a problem while submitting this job.")
+						printer.warning("Please read the following error message:")
+						printer.plain(err)
 						Printer.Level = Printer.Level - 1
-						sys.exit(1)
-	
-			failed = False			
-			# submit or run job
-			if  dataset.keys().count('batch')==0 or dataset['batch'] == 'None' :
-				# No batch system found .... 
-				syscall( data, False )
-				tops = data.split("|")[0].split()
-				Printer.Level = Printer.Level + 1		
-				if waiting:
-					printer.info("") # remove the wait flag
-					waiting = None		
-				printer.info("Running"," ".join(tops))
-				checkcmd = "ps -fea | grep \"" + " ".join(tops)  + "\" | grep -v grep  | wc -l "				
-				out,err = syscall (checkcmd)
-				if str(out).strip().isdigit():
-					printer.info( "Instances" , str(out).strip()  )
-				else:
-					printer.error("Command line execution","It seems the task is not running, please confirm it yourself.")
-				Printer.Level = Printer.Level + 1	
-
-			elif  dataset['batch'] == "MANUAL":
-				syscall( data )
-			else:
-				o = open( "run.batch","w")		
-								
-				o.write(data)
-				o.flush()
-				o.close		
-				# get the batch system submission commands	
-				mybatch = self.__getBatchSystem(dataset)
-				if mybatch == None:
-					if waiting:
-						printer.info("") # remove the wait flag
-						waiting = None
-					Printer.Level = Printer.Level + 1	
-					printer.error("Batch system error","Could not find any valid Batch system.")
-					Printer.Level = Printer.Level - 1			
-					sys.exit(1)
-					
-				submit_cmd = mybatch['submit']['command']
-				submit_params = mybatch['submit']['parameters']	
-				
-				if submit_params=="<":
-					cmd =  " cat run.batch |  " + submit_cmd
-				else:
-					cmd = submit_cmd + " " + submit_params + " run.batch"
-				
-				out,err = syscall( cmd )								
-				sopattern = mybatch['submit']['submittedmsg']
-				sopattern = sopattern.replace("%JOBID%","(\d+)")
-				mobj = re.search(sopattern,out)
-				if mobj:
-					jobid = mobj.group(1)
-					cmd = "touch batch.jobid." + jobid
-					syscall( cmd )
-					oLevel = Printer.Level
-					if waiting:
-							Printer.Level = 0
-							printer.info("Submitted")
-							Printer.Level = oLevel
-					else:
-						Printer.Level = Printer.Level + 1
-						printer.info("Submitted")
-						Printer.Level = Printer.Level - 1
-				else:
-					if waiting:
-						printer.info("") # remove the wait flag
-						waiting = None
-					Printer.Level = Printer.Level + 1	
-					printer.error("Warning","It seems there was a problem while submitting this job.")
-					printer.warning("Please read the following error message:")
-					printer.plain(err)
-					Printer.Level = Printer.Level - 1
-					failed = True
-													
-			#os.chdir("..")	
-			os.chdir(t)	
-			if failed:
-				# mark directory as failed
-				os.chdir(run_id)
-				os.chdir("..")
-				shutil.move( newname , "INVALID_"+newname )
+						failed = True
+												
+				#os.chdir("..")	
 				os.chdir(t)	
-			
+				if failed:
+					# mark directory as failed
+					os.chdir(run_id)
+					os.chdir("..")
+					shutil.move( newname , "INVALID_"+newname )
+					os.chdir(t)	
+		
+		return	
 			
 #####################################################################                                           
 #
@@ -1480,10 +1536,10 @@ set xtics rotate
 			
 		if item == None: # means show the global configuration	
 	
-			#self.__readApps(yaml_conf)
-			#self.__readNets(yaml_conf)
-			#self.__readSynthetics(yaml_conf)
-			#self.__readFilesystems(yaml_conf)
+			self.__readApps()
+			self.__readNets()
+			self.__readSynthetics()
+			self.__readFilesystems()
 
 			printer.info("KUBE Home",self.home )
 			printer.info("KUBE Runs",self.runs_dir )
@@ -1508,16 +1564,20 @@ set xtics rotate
 
 		elif item == 'apps':
 			printer.plain(printer.bold("***")+"  Showing configuration for selected App  "+printer.bold("***"))
+			self.__readApps()
 			self.__viewApp(name)	
 		
 		elif item == 'filesys':
 			printer.plain(printer.bold("***")+"  Showing configuration for Filesystems  "+printer.bold("***"))	
+			self.__readFilesystems()
 			self.__viewFS(name)
 		elif item == 'nets':
 			printer.plain(printer.bold("***")+"  Showing configuration for Networks  "+printer.bold("***"))
+			self.__readNets()
 			self.__viewNet(name)
 		elif item == 'synths':
 			printer.plain(printer.bold("***")+"  Showing configuration for Synthetics benchmarks "+printer.bold("***"))	
+			self.__readSynthetics()
 			self.__viewSynths(name)
 		else:
 			print "Unknown item: '" + str(item) + "'"
@@ -1665,10 +1725,10 @@ set xtics rotate
 #	Reading and variables functions
 #
 #####################################################################   			
-	def __readApps(self,yaml_conf):
+	def __readApps(self):
 		""" Reads APPS section and do some error check """
 		# set self.apps
-		self.apps = yaml_conf['KUBE']['BENCH']['APPS'] # Array of dictionaries with apps info: active, exe, name, etc...		
+		self.apps = self.yaml_conf['KUBE']['BENCH']['APPS'] # Array of dictionaries with apps info: active, exe, name, etc...		
 		# sanity check
 		repeat=True
 		while repeat:
@@ -1717,9 +1777,9 @@ set xtics rotate
 		for appname in self.a_apps.keys():	
 			for a in self.apps:	
 				if a['name'] == appname:	 			
-					for gk in yaml_conf['KUBE'].keys():
+					for gk in self.yaml_conf['KUBE'].keys():
 						if not gk in ["BATCH","BENCH"]  :
-							a[str(gk).lower()] =  yaml_conf['KUBE'][gk]['path']
+							a[str(gk).lower()] =  self.yaml_conf['KUBE'][gk]['path']
 					for batch in self.batchs: 
 						if batch['name'] == a['batch']:
 							for key in batch.keys():
@@ -1749,13 +1809,22 @@ set xtics rotate
 						if dataset.keys().count('numprocs')==0 :
 							# if there is no numprocs, at least tasks_per_node and nodes are needed
 							if dataset.keys().count('tasks_per_node')==0 and  dataset.keys().count('nodes')==0:
-								printer.error("Config file error"," Cannot figure out the number of tasks to run for " + printer.bold(appname) + " use either 'numprocs' or a combination of 'nodes' and 'tasks_per_run'!!!") 
+								printer.error("Config file error"," Cannot figure out the number of tasks to run for " + printer.bold(appname) + " use either 'numprocs' or a combination of 'nodes' and 'tasks_per_nodes'!!!") 
 								printer.error("Please revise your configuration file !!!")
 								sys.exit(1)
 							elif dataset.keys().count('tasks_per_node')!=0 and  dataset.keys().count('nodes')!=0:	
 								numprocs_str=''
-								for n in   ("".join(dataset['nodes'].split())).split(','): 
-									numprocs_str = numprocs_str + ',' +  str( int(dataset['tasks_per_node'])*int(n) )	
+								try:
+									if type(dataset['nodes']) == int:
+										numprocs_str =  str( int(dataset['tasks_per_node'])*int((dataset['nodes'] ) ))
+									else:
+										for n in   ("".join(dataset['nodes'].split())).split(','): 
+											numprocs_str = numprocs_str + ',' +  str( int(dataset['tasks_per_node'])*int(n) )	
+								except:
+									printer.error("No procs found in", printer.bold( str( dataset['name'] )) )
+									printer.error("Apparently numprocs is not a valid integer value")
+									printer.error("Please revise your configuration file !!!")
+									sys.exit(1)
 								dataset['numprocs'] = numprocs_str[1:]	
 							else:
 								printer.error("Config file error"," Cannot figure out the number of tasks to run for " + printer.bold(appname) +" !!!") 
@@ -1763,6 +1832,13 @@ set xtics rotate
 								sys.exit(1)
 						else:
 							nprocs = str(dataset['numprocs']).split(',')
+							try:
+								number = map(int,nproc)	
+							except:
+								printer.error("No procs found in", printer.bold( str( dataset['name'] )) )
+								printer.error("Apparently numprocs is not a valid integer value")
+								printer.error("Please revise your configuration file !!!")
+								sys.exit(1)
 							if len(nprocs) == 0:
 								printer.error("No procs found in", printer.bold( str( dataset['name'] )) )
 								printer.error("Please revise your configuration file !!!")
@@ -1771,11 +1847,29 @@ set xtics rotate
 							nnodes=[]
 							if dataset.keys().count('nodes')!=0 and dataset['nodes'] != None and  dataset['nodes'] != '':
 								nnodes = str(dataset['nodes']).split(',')
+								try:
+									number = map(int,nnodes)
+								except:
+									printer.error("Nodes error found in", printer.bold( str( dataset['name'] )) )
+									printer.error("Apparently nodes number is not a valid integer value")
+									printer.error("Please revise your configuration file !!!")
+									sys.exit(1)
+
+								# make nodes and numprocs lists of the same size...which is the same nodes config for every numprocs
+								if len(nnodes)==1 and len(nprocs)!=1:
+									nnodes=nnodes*len(nprocs)
+								
+								if len(nnodes)!=1 and len(nprocs)==1:
+									nprocs=nprocs*len(nnodes)
+									dataset['numprocs'] =  ','.join([str(x) for x in nprocs])				
+
+
 								if len(nnodes)>1 and len(nnodes)!=len(nprocs):
 									printer.error("Misleading procs/nodes configuration found in", printer.bold( str( dataset['name'] )) )
 									printer.error("Please revise your configuration file !!!")
 									sys.exit(1)
-								
+
+							dataset['nodes'] =  ','.join([str(x) for x in nnodes]);
 							
 						if dataset.keys().count('outputs')==0 :
 							printer.error("Config file error"," Dataset of " + printer.bold(appname) + " found without 'outputs'. This tag is mandatory!!!") 
@@ -1786,40 +1880,40 @@ set xtics rotate
 
 		self.__substituteVarsForAnalysis(self.a_apps)
 	
-	def __readSynthetics(self,yaml_conf):
+	def __readSynthetics(self):
 		""" Reads Synthetic section and do some error check """
 		# set self.synths
-		self.synths = yaml_conf['KUBE']['BENCH']['SYNTHETICS'] # Array of dictionaries with synthetic bench info: active, exe, name, etc...
+		self.synths = self.yaml_conf['KUBE']['BENCH']['SYNTHETICS'] # Array of dictionaries with synthetic bench info: active, exe, name, etc...
 		self.__sanityBasic(self.synths,"Synthetics")
 		#set active Synthetics:
 		self.a_synths = dict( [ (synth['name'],synth['datasets']) for synth in self.synths if synth['active'] ]) # Dictionary Name->Array of datasets  of active networks
 		# update self.a_synths and remove inactive datasets ... also if there is no active dataset remove synthetic from the list of active items
 		self.__updateActiveElements(self.a_synths,"Synthetics")
-		self.__populateElements(self.a_synths, self.synths,yaml_conf)
+		self.__populateElements(self.a_synths, self.synths)
 		self.__substituteVarsForAnalysis(self.a_synths)
 	
-	def __readNets(self,yaml_conf):
+	def __readNets(self):
 		""" Reads Networks section and do some error check """
 		# set self.nets
-		self.nets = yaml_conf['KUBE']['BENCH']['NETWORKS'] # Array of dictionaries with nets info: active, exe, name, etc...
+		self.nets = self.yaml_conf['KUBE']['BENCH']['NETWORKS'] # Array of dictionaries with nets info: active, exe, name, etc...
 		self.__sanityBasic(self.nets,"Networks")
 		#set active networks:
 		self.a_nets = dict( [ (net['name'],net['datasets']) for net in self.nets if net['active'] ]) # Dictionary Name->Array of datasets  of active networks
 		# update self.a_nets and remove inactive datasets ... also if there is no active dataset remove network from the list of active networks
 		self.__updateActiveElements( self.a_nets ,"Networks")
-		self.__populateElements(self.a_nets ,self.nets,yaml_conf)
+		self.__populateElements(self.a_nets ,self.nets)
 		self.__substituteVarsForAnalysis(self.a_nets)
 
-	def __readFilesystems(self,yaml_conf):
+	def __readFilesystems(self):
 		""" Reads Filesystems section and do some error check """
 		# set self.filesys
-		self.filesys = yaml_conf['KUBE']['BENCH']['FILESYSTEMS'] # Array of dictionaries with filesystems info: active, exe, name, etc...
+		self.filesys = self.yaml_conf['KUBE']['BENCH']['FILESYSTEMS'] # Array of dictionaries with filesystems info: active, exe, name, etc...
 		self.__sanityBasic(self.filesys,"Filesystems")
 		#set active filesystems:
 		self.a_filesys = dict( [ (fs['name'],fs['datasets']) for fs in self.filesys if fs['active'] ]) # Dictionary Name->Array of datasets  of active filesystems
 		# update self.a_filesys and remove inactive datasets ... also if there is no active dataset remove filesystem from the list of active filesystems
 		self.__updateActiveElements( self.a_filesys ,"Filesystems")
-		self.__populateElements(self.a_filesys ,self.filesys,yaml_conf)
+		self.__populateElements(self.a_filesys ,self.filesys)
 		self.__substituteVarsForAnalysis(self.a_filesys)
 
 
@@ -1961,15 +2055,15 @@ set xtics rotate
 					del(a_elems[elem])
 					repeatf = True
 
-	def	__populateElements(self,a_elems,elems,yaml_conf):
+	def	__populateElements(self,a_elems,elems):
 		# populate self.XXX with the batch parameters if they are not already set in the XXX entry:
 		# populate also de global tags values: HOME, RUNS, RESULTS, TOOLS ... 
 		for aname in a_elems.keys():	
 			for a in elems:	
 				if a['name'] == aname:	 			
-					for gk in yaml_conf['KUBE'].keys():
+					for gk in self.yaml_conf['KUBE'].keys():
 						if not gk in ["BATCH","BENCH"]  :
-							a[str(gk).lower()] =  yaml_conf['KUBE'][gk]['path']
+							a[str(gk).lower()] =  self.yaml_conf['KUBE'][gk]['path']
 					for batch in self.batchs: 
 						if batch['name'] == a['batch']:
 							for key in batch.keys():
@@ -1997,13 +2091,22 @@ set xtics rotate
 						if dataset.keys().count('numprocs')==0 :
                                                         # if there is no numprocs, at least tasks_per_node and nodes are needed
                                                         if dataset.keys().count('tasks_per_node')==0 and  dataset.keys().count('nodes')==0:
-                                                                printer.error("Config file error"," Cannot figure out the number of tasks to run for " + printer.bold(aname) + " use either 'numprocs' or a  combination of 'nodes' and 'tasks_per_run'!!!") 
+                                                                printer.error("Config file error"," Cannot figure out the number of tasks to run for " + printer.bold(aname) + " use either 'numprocs' or a  combination of 'nodes' and 'tasks_per_node'!!!") 
                                                                 printer.error("Please revise your configuration file !!!")
                                                                 sys.exit(1)
                                                         elif dataset.keys().count('tasks_per_node')!=0 and  dataset.keys().count('nodes')!=0:
-                                                                numprocs_str=''
-                                                                for n in   ("".join(dataset['nodes'].split())).split(','):
-                                                                        numprocs_str = numprocs_str +',' +  str( int(dataset['tasks_per_node'])*int(n) )
+                                                               	numprocs_str=''
+								try:
+									if type(dataset['nodes']) == int:
+										numprocs_str =  str( int(dataset['tasks_per_node'])*int((dataset['nodes'] ) ))
+									else:
+	                                                                	for n in   ("".join(dataset['nodes'].split())).split(','):
+        	                                                                	numprocs_str = numprocs_str +',' +  str( int(dataset['tasks_per_node'])*int(n) )
+								except:
+									printer.error("No procs found in", printer.bold( str( dataset['name'] )) )
+									printer.error("Apparently numprocs is not a valid integer value")
+									printer.error("Please revise your configuration file !!!")
+									sys.exit(1)
                                                                 dataset['numprocs'] = numprocs_str[1:]
                                                         else:
                                                                 printer.error("Config file error"," Cannot figure out the number of tasks to run for " + printer.bold(aname) +" !!!")
@@ -2015,6 +2118,13 @@ set xtics rotate
 							#sys.exit(1)	
 						else:
 							nprocs = str(dataset['numprocs']).split(',')
+							try: 
+								number = map(int, nprocs)
+							except:
+								printer.error("No procs found in", printer.bold( str( dataset['name'] )) )
+								printer.error("Apparently numprocs is not a valid integer value")
+								printer.error("Please revise your configuration file !!!")
+								sys.exit(1)
 							if len(nprocs) == 0:
 								printer.error("No procs found in", printer.bold( str( dataset['name'] )) )
 								printer.error("Please revise your configuration file !!!")
@@ -2023,16 +2133,34 @@ set xtics rotate
 							nnodes=[]
 							if dataset.keys().count('nodes')!=0 and dataset['nodes'] != None and  dataset['nodes'] != '':
 								nnodes = str(dataset['nodes']).split(',')
+								try: 
+									number = map(int, nnodes)
+								except:
+									printer.error("Nodes error found in", printer.bold( str( dataset['name'] )) )
+									printer.error("Apparently nodes number is not a valid integer value")
+									printer.error("Please revise your configuration file !!!")
+									sys.exit(1)
+
+								# make nodes and numprocs lists of the same size...which is the same nodes config for every numprocs
+								if len(nnodes)==1 and len(nprocs)!=1:
+									nnodes=nnodes*len(nprocs)
+								
+								if len(nnodes)!=1 and len(nprocs)==1:
+									nprocs=nprocs*len(nnodes)
+									dataset['numprocs'] =  ','.join([str(x) for x in nprocs])				
+
 								if len(nnodes)>1 and len(nnodes)!=len(nprocs):
 									printer.error("Misleading procs/nodes configuration found in", printer.bold( str( dataset['name'] )) )
 									printer.error("Please revise your configuration file !!!")
 									sys.exit(1)
 
+							dataset['nodes'] =  ','.join([str(x) for x in nnodes]);
+
 						if dataset.keys().count('outputs')==0 :
 							printer.error("Config file error"," Dataset of " + printer.bold(aname) + " found without 'outputs'. This tag is mandatory!!!") 
 							printer.error("Please revise your configuration file !!!")
 							sys.exit(1)	
-								
+							
 						break # step out 'a' loop		
 
 		
@@ -2058,18 +2186,18 @@ set xtics rotate
 #	Init and read conf YAML
 #
 #####################################################################   		
-	def __readYaml(self, yaml_conf):
-		"""Parse the yaml_conf structure and reads the configuration variables needed. Also do some basic correctness and sanity check"""	
+	def __readYaml(self):
+		"""Parse the self.yaml_conf structure and reads the configuration variables needed. Also do some basic correctness and sanity check"""	
 		# some basic error correctness
-		if yaml_conf.keys().count('KUBE') ==0:
+		if self.yaml_conf.keys().count('KUBE') ==0:
 			printer.error("Config file error", "KUBE head tag is not defined") 
 			sys.exit(1)	
-		if yaml_conf['KUBE'].keys().count("HOME") == 0 or \
-		   yaml_conf['KUBE'].keys().count("RUNS") == 0 or \
-		   yaml_conf['KUBE'].keys().count("RESULTS") == 0 or \
-		   yaml_conf['KUBE'].keys().count("TOOLS") == 0 or \
-		   yaml_conf['KUBE'].keys().count("BATCH") == 0 or \
-		   yaml_conf['KUBE'].keys().count("BENCH") == 0:
+		if self.yaml_conf['KUBE'].keys().count("HOME") == 0 or \
+		   self.yaml_conf['KUBE'].keys().count("RUNS") == 0 or \
+		   self.yaml_conf['KUBE'].keys().count("RESULTS") == 0 or \
+		   self.yaml_conf['KUBE'].keys().count("TOOLS") == 0 or \
+		   self.yaml_conf['KUBE'].keys().count("BATCH") == 0 or \
+		   self.yaml_conf['KUBE'].keys().count("BENCH") == 0:
 			printer.error("Config file error","HOME, RUNS, RESULTS, TOOLS, BATCH and BENCH must be defined")
 			sys.exit(1)			
 
@@ -2077,43 +2205,43 @@ set xtics rotate
 		# Set important variables
 		
 		# set home
-		self.home = yaml_conf['KUBE']['HOME']['path']
+		self.home = self.yaml_conf['KUBE']['HOME']['path']
 		if self.home == None: 
 			printer.error("Config file error","HOME must be defined")
 			sys.exit(1) 
 
 		#set results
-		self.results_dir = yaml_conf['KUBE']['RESULTS']['path']
+		self.results_dir = self.yaml_conf['KUBE']['RESULTS']['path']
 		if re.match("[^/]",self.results_dir):
 			self.results_dir = self.home + "/" + self.results_dir
-			yaml_conf['KUBE']['RESULTS']['path'] = self.results_dir
+			self.yaml_conf['KUBE']['RESULTS']['path'] = self.results_dir
 		
 		#set runs
-		self.runs_dir = yaml_conf['KUBE']['RUNS']['path']
-		self.runs_lifespan = int(yaml_conf['KUBE']['RUNS']['lifespan'])
+		self.runs_dir = self.yaml_conf['KUBE']['RUNS']['path']
+		self.runs_lifespan = int(self.yaml_conf['KUBE']['RUNS']['lifespan'])
 		if re.match("[^/]",self.runs_dir):
 			self.runs_dir = self.home + "/" + self.runs_dir
-			yaml_conf['KUBE']['RUNS']['path'] = self.runs_dir
+			self.yaml_conf['KUBE']['RUNS']['path'] = self.runs_dir
 		
 		#set tools
-		self.tools_dir = yaml_conf['KUBE']['TOOLS']['path']
+		self.tools_dir = self.yaml_conf['KUBE']['TOOLS']['path']
 		if re.match("[^/]",self.tools_dir):
 			self.tools_dir = self.home + "/" + self.tools_dir
-			yaml_conf['KUBE']['TOOLS']['path']= self.tools_dir
+			self.yaml_conf['KUBE']['TOOLS']['path']= self.tools_dir
 
 		#set RRDTOOL
-		self.rrdtool_path = yaml_conf['KUBE']['RRDTOOL']['path']
+		self.rrdtool_path = self.yaml_conf['KUBE']['RRDTOOL']['path']
 		if re.match("[^/]",self.rrdtool_path):
 			self.rrdtool_path = self.home + "/" + self.rrdtool_path
-			yaml_conf['KUBE']['RRDTOOL']['path']= self.rrdtool_path
-		self.rrdtool_root = yaml_conf['KUBE']['RRDTOOL']['root']
+			self.yaml_conf['KUBE']['RRDTOOL']['path']= self.rrdtool_path
+		self.rrdtool_root = self.yaml_conf['KUBE']['RRDTOOL']['root']
 		if re.match("[^/]",self.rrdtool_root):
 			self.rrdtool_root = self.home + "/" + self.rrdtool_root
-			yaml_conf['KUBE']['RRDTOOL']['root']= self.rrdtool_root
+			self.yaml_conf['KUBE']['RRDTOOL']['root']= self.rrdtool_root
 
 			
 		# set batchs
-		self.batchs = yaml_conf['KUBE']['BATCH']
+		self.batchs = self.yaml_conf['KUBE']['BATCH']
 		if self.batchs==None:
 			printer.error("Config file error","at least one BATCH must be defined")
 			sys.exit(1)	
@@ -2147,18 +2275,18 @@ set xtics rotate
 					sys.exit(1)	
 		
 		# Verify that the main tags ni BENCH section exist
-		if (yaml_conf['KUBE']['BENCH'].keys().count('APPS') == 0) or \
-			(yaml_conf['KUBE']['BENCH'].keys().count('FILESYSTEMS') == 0) or \
-			(yaml_conf['KUBE']['BENCH'].keys().count('NETWORKS') == 0) or \
-			(yaml_conf['KUBE']['BENCH'].keys().count('SYNTHETICS') == 0) :		
+		if (self.yaml_conf['KUBE']['BENCH'].keys().count('APPS') == 0) or \
+			(self.yaml_conf['KUBE']['BENCH'].keys().count('FILESYSTEMS') == 0) or \
+			(self.yaml_conf['KUBE']['BENCH'].keys().count('NETWORKS') == 0) or \
+			(self.yaml_conf['KUBE']['BENCH'].keys().count('SYNTHETICS') == 0) :		
 			printer.error("Config file error","'APPS','FILESYSTEMS','NETWORKS','SYNTHETICS' tags are mandatory inside BENCH")
 			sys.exit(1)	
 			
 		# and fill each one if them:	
-		self.__readApps(yaml_conf)
-		self.__readNets(yaml_conf)
-		self.__readSynthetics(yaml_conf)
-		self.__readFilesystems(yaml_conf)
+		#self.__readApps(self.yaml_conf)
+		#self.__readNets(self.yaml_conf)
+		#self.__readSynthetics(self.yaml_conf)
+		#self.__readFilesystems(self.yaml_conf)
 														
 		# End setting variables
 		########################################################################################
@@ -2184,8 +2312,8 @@ set xtics rotate
 		#printer.info("")
 		
 		# global variable holding the configuration 
-		yaml_conf = yaml.load( stream )		
-		self.__readYaml(yaml_conf)
+		self.yaml_conf = yaml.load( stream )		
+		self.__readYaml()
 	
 	def __init__(self,configfile=None):
 		# include KUBE.LIB_DIR in the module search path 

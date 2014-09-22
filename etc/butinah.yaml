@@ -2,21 +2,21 @@
 ---
 KUBE:
    HOME: 
-        path: /home/jonarbo/dev/kube
+        path: /share/apps/NYUAD/kube/0.97
+        
+   RUNS:                                                # Where the runs outcomes will be stored
+        path:  /home/apps/kube/data/runs                # if the leading "/" is provided then the absolute path is taken, otherwise the relative path to HOME ([KUBE][HOME])  will be used       
+        lifespan:  1                                    # duration in days (integer value) ... if 0 keep runs results forever ... 
 
-   RUNS:  
-        path: data/runs          # if the leading "/" is provided then the absolute path is taken, otherwise the relative path to HOME ([KUBE][HOME])  will be used       
-        lifespan:  1                # duration in days (integer value) ... if 0 keep runs results forever ... 
-
-   RESULTS: 
-        path: data/results      # if the leading "/" is provided then the absolute path is taken, otherwise the relative path to HOME ([KUBE][HOME])  will be used       
+   RESULTS:                                             # When the results of the post-processing will be stored
+        path: /home/apps/kube/data/results              # if the leading "/" is provided then the absolute path is taken, otherwise the relative path to HOME ([KUBE][HOME])  will be used       
 
    TOOLS: 
-        path: tools             # if the leading "/" is provided then the absolute path is taken, otherwise the relative path to HOME ([KUBE][HOME])  will be used
+        path: tools                                     # if the leading "/" is provided then the absolute path is taken, otherwise the relative path to HOME ([KUBE][HOME])  will be used
 
    RRDTOOL:     
-        root: /home/jonarbo/bin/rrdtool-1.4.8        # if the leading "/" is provided then the absolute path is taken, otherwise the relative path to HOME ([KUBE][HOME])  will be used
-        path: data/rrd                                # path to where the database will be stored
+        root: /share/apps/NYUAD/kube/rrdtool/1.4.8/     #if the leading "/" is provided then the absolute path is taken, otherwise the relative path to HOME ([KUBE][HOME])  will be used
+        path: /home/apps/kube/data/rrd                  # path to where the database will be stored
 
    BATCH:             
         - name: PBS
@@ -25,7 +25,7 @@ KUBE:
                 command: qsub 
                 submittedmsg: Job <%JOBID%> is submitted to queue 
           monitor: showq  | gawk '{print $1}' | grep %JOBID%
-          nodes: 1,4,8,16
+          #nodes: 1,8,16
           tasks_per_node: 12                
           queue: p48                             
           launcher: mpirun 
@@ -222,7 +222,7 @@ KUBE:
            batch: PBS         
            active: true
            modules:  module load gcc mpi-openmpi    
-#           numprocs: 12,24,36,48,60         
+           numprocs: 12,24,36,48,60         
            datasets:           
                 - name: skampi-5.0.4-r0355
                   active: false
@@ -268,9 +268,12 @@ KUBE:
       SYNTHETICS:
          - name: NAS
            active: true
-           batch: PBS 
-           numprocs: 4 , 8
-           modules:  module load gcc mpi-openmpi
+           batch: PBS
+           nodes: 1, 2 ,  3 
+           #nodes: 2
+           #numprocs: 12             
+           #numprocs: 4 , 8,16, 32
+           modules:  module load NYUAD gcc mpi
            dependencies: bin/*.%NUMPROCS%
            datasets:
                  - name: NPB3.3-MPI
@@ -322,9 +325,9 @@ KUBE:
            datasets:
                  - name: with_atlas_32cpus
                    numprocs: 32
-                   active: true    
+                   active: false    
                                   
                  - name: with_atlas_64cpus
                    numprocs: 64
-                   active: true                
+                   active: false                
 ...
