@@ -25,8 +25,8 @@ KUBE:
                 command: qsub 
                 submittedmsg: Job <%JOBID%> is submitted to queue 
           monitor: showq  | gawk '{print $1}' | grep %JOBID%
-          #nodes: 1,8,16
-          tasks_per_node: 12                
+          nodes: 1,8,16
+          #tasks_per_node: 12                
           queue: p48                             
           launcher: mpirun 
           launcher_flags: ' '     
@@ -44,7 +44,7 @@ KUBE:
    BENCH: 
       APPS:
          - name: mpiblast
-           active: false 
+           active: true 
            batch: PBS 
            exe: mpiblast 
            modules: module load gcc mpi-openmpi mpiblast
@@ -269,10 +269,11 @@ KUBE:
          - name: NAS
            active: true
            batch: PBS
-           nodes: 1, 2 ,  3 
+           #nodes: 1, 2 ,  3 
            #nodes: 2
-           #numprocs: 12             
+           #numprocs: 12        
            #numprocs: 4 , 8,16, 32
+           #numprocs: 4 , 8, 12
            modules:  module load NYUAD gcc mpi
            dependencies: bin/*.%NUMPROCS%
            datasets:

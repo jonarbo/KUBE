@@ -77,7 +77,7 @@ class KUBE:
 			for litem in  whichdataset:
 				str2find = "%("+ str(litem).upper() +")%"
 				prog = re.compile(str2find);
-				if litem != 'numprocs':
+				if litem != 'numprocs' :
 						#data = prog.sub( unicode(whichdataset[litem]) ,data)	
 						data = prog.sub( str(whichdataset[litem]) ,data)	
 				else:
@@ -1236,7 +1236,7 @@ set xtics rotate
 				os.makedirs(t + dataset['name'])
 			elif not os.path.exists(t+dataset['name']):
 				os.makedirs(t+dataset['name'])
-				
+			
 			cwd = os.getcwd()
 			os.chdir(t)					
 
@@ -1308,14 +1308,9 @@ set xtics rotate
 		for p,n in zip(nprocs, nnodes) :
 			nodesdict[p].append(n)
 		
-		print nodesdict.items()
-		print nprocs
-		print nnodes
-		
 		if len(nodesdict)!=0:
-			nprocs = nodesdict.keys()
-					
-		printer.plain(printer.bold("---------------------------------------------------------"))
+			nprocs = nodesdict.keys()							
+			
 		for p in nprocs:
 			if len(nnodes)>1:
 				run_id =[]
@@ -1334,13 +1329,14 @@ set xtics rotate
 				else:	
 					run_id =  str(p) + "cpus/"  + str(newname)
 			
-			if isinstance(run_id,list):
-				for runid in run_id:
-					print runid
-				continue
+			run_id_list=[]				
+			if isinstance(run_id,list): 
+				run_id_list = copy.deepcopy(run_id)
 			else:
-				print run_id
-				
+				run_id_list.append( run_id )	
+
+			for run_id in run_id_list:
+		
 				printer.info( "Run ID" , printer.bold( run_id) + " ... ", wait="true" ) 
 				waiting = True
 			
@@ -1374,20 +1370,21 @@ set xtics rotate
 						run_id =  p + "cpus_" + str(nodesdict[p]) + "nodes/"  + str(newname)
 					else:
 						run_id =  p + "cpus/"  + str(newname)
-			
-				print run_id
-				
+							
 				Printer.Level = Printer.Level - 1
 				shutil.copytree(  dataset['name'] , run_id )		
 				# get the script or the command to run it
 				data = self.__getBatchScript(dataset,p) 
 		
+				# Running path for this simulation
 				rpath = t + run_id 
-				print rpath	
-				continue	
+				
+				#break loop here
+				#continue	
+						
 				os.chdir(rpath)  
 		
-				if not isApp:
+				if not isApp:	
 					files = None
 					exe = None
 				
@@ -1436,6 +1433,7 @@ set xtics rotate
 							Printer.Level = Printer.Level - 1
 							sys.exit(1)
 				
+								
 				failed = False			
 				# submit or run job
 				if  dataset.keys().count('batch')==0 or dataset['batch'] == 'None' :
@@ -1483,34 +1481,42 @@ set xtics rotate
 						cmd = submit_cmd + " " + submit_params + " run.batch"
 					
 					out,err = syscall( cmd )								
-					sopattern = mybatch['submit']['submittedmsg']
-					sopattern = sopattern.replace("%JOBID%","(\d+)")
-					mobj = re.search(sopattern,out)
-					if mobj:
-						jobid = mobj.group(1)
-						cmd = "touch batch.jobid." + jobid
-						syscall( cmd )
+					if err:
+						errmsg = "Command '" + cmd + "' not executed: " + err
 						oLevel = Printer.Level
-						if waiting:
-								Printer.Level = 0
-								printer.info("Submitted")
-								Printer.Level = oLevel
-						else:
-							Printer.Level = Printer.Level + 1
-							printer.info("Submitted")
-							Printer.Level = Printer.Level - 1
-					else:
-						if waiting:
-							printer.info("") # remove the wait flag
-							waiting = None
-						Printer.Level = Printer.Level + 1	
-						printer.error("Warning","It seems there was a problem while submitting this job.")
-						printer.warning("Please read the following error message:")
-						printer.plain(err)
-						Printer.Level = Printer.Level - 1
+						Printer.Level = 0
+						printer.error('Error', errmsg )
+						Printer.Level = oLevel
 						failed = True
+					else:			
+						sopattern = mybatch['submit']['submittedmsg']
+						sopattern = sopattern.replace("%JOBID%","(\d+)")
+						mobj = re.search(sopattern,out)
+						if mobj:
+							jobid = mobj.group(1)
+							cmd = "touch batch.jobid." + jobid
+							syscall( cmd )
+							oLevel = Printer.Level
+							if waiting:
+									Printer.Level = 0
+									printer.info("Submitted")
+									Printer.Level = oLevel
+							else:
+								Printer.Level = Printer.Level + 1
+								printer.info("Submitted")
+								Printer.Level = Printer.Level - 1
+						else:
+							if waiting:
+								printer.info("") # remove the wait flag
+								waiting = None
+							Printer.Level = Printer.Level + 1	
+							printer.error("Warning","It seems there was a problem while submitting this job.")
+							printer.warning("Please read the following error message:")
+							printer.plain(err)
+							Printer.Level = Printer.Level - 1
+							failed = True
 												
-				#os.chdir("..")	
+				#os.chdir("..")
 				os.chdir(t)	
 				if failed:
 					# mark directory as failed
@@ -1831,9 +1837,9 @@ set xtics rotate
 								printer.error("Please revise your configuration file !!!")
 								sys.exit(1)
 						else:
-							nprocs = str(dataset['numprocs']).split(',')
+							nprocs = str(dataset['numprocs']).split(',')						
 							try:
-								number = map(int,nproc)	
+								number = map(int,nprocs)	
 							except:
 								printer.error("No procs found in", printer.bold( str( dataset['name'] )) )
 								printer.error("Apparently numprocs is not a valid integer value")
