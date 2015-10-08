@@ -1,0 +1,14 @@
+#!/bin/bash -l
+
+#BSUB -o hpcc.out
+#BSUB -e hpcc.err
+#BSUB -q rh6_q2hr 
+#BSUB -W 20 
+#BSUB -n 32
+#BSUB -a openmpi
+#BSUB -R span[ptile=8]
+
+module purge
+module load gcc atlas/3.8.4-sse3 mpi-openmpi
+
+mpirun.lsf ./hpcc  

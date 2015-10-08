@@ -1,0 +1,268 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+import sys, os, inspect
+import re
+
+# check for the correct python and gnuplot versions
+if not re.match("^2.7",sys.version):
+	print "No Python or wrong version found ... Please be sure to have version Python2.7 on"
+	print "Python found: " + sys.version
+	sys.exit(1)
+	
+import argparse
+
+class MyParser(argparse.ArgumentParser):
+	def __init__(self):
+		self.usage=\
+"""
+The accepted ways to run KUBE are:
+----------------------------------
+kube [ {-h,--help} ] 
+kube {-v,--version}
+kube <COMMAND> <OPTIONS>
+
+Some <OPTIONS> are specific to some <COMMANDS>: 
+-----------------------------------------------
+kube list    [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS]
+kube run     [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS] [--log FILE]
+kube update  [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS] [--start START] [--end END] [--log FILE] [--rrd] [--force]
+kube plot   -t DIR [-p] [-m METRIC_NAMES] [--start START] [--end END] 
+kube plot   -b BASE_DIR [-p] [--target DIR] [-m METRIC_NAMES] { [--start START] [--end END] , [--at DATE] } }
+kube clean   -d {runs,results} [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS] [--start START] [--end END]
+kube distclean
+"""		
+
+		self.help=\
+"""
+Commands allowed in KUBE:
+-------------------------
+	{list,run,update,plot,clean,distclean}
+                        
+optional arguments:
+-------------------
+  -h, --help            show this help message and exit
+  -v, --version         show program's version number and exit
+  --start START         Option to set the initial date when needed. Default is the
+                        first registered date
+  --end END             Option to set the end date when needed. Default is 'Now'
+  --at DATE             Option to select a specific date when needed
+  --log FILE            Print out log information to FILE  
+  --rrd                 Used along with the command 'update' to enable RRD
+                        integration. Each metric computed is stored in a RRD 
+                        database 
+  --force               The 'update' stage is only done if the configuration section
+                        for the current dataset has changed. You may want to force 
+                        the 'update' stage for some reason,ie: create rrd database 
+                        for specific dates that are already updated
+  -d {run,results}      Option to specify which directory is to be cleaned
+                        when the 'clean' command is used
+  -a APPS               Option used to select which apps benchmark from the
+                        config file will be processed. This option may accept
+                        a comma-separated list if multiple apps need to be
+                        selected. Use 'all' to select everything. It is
+                        allowed in the following commands: 'run', 'list',
+                        'update'
+  -n NETS               Option used to select which network benchmark from the
+                        config file will be processed. This option may accept
+                        a comma-separated list if multiple apps need to be
+                        selected. Use 'all' to select everything. It is
+                        allowed in the following commands: 'run', 'list',
+                        'update'
+  -f FILESYS            Option used to select which filesystem benchmark from
+                        the config file will be processed. This option may
+                        accept a comma-separated list if multiple apps need to
+                        be selected. Use 'all' to select everything. It is
+                        allowed in the following commands: 'run', 'list',
+                        'update'
+  -s SYNTHS             Option used to select which synthetic benchmark from
+                        the config file will be processed. This option may
+                        accept a comma-separated list if multiple apps need to
+                        be selected. Use 'all' to select everything. It is
+                        allowed in the following commands: 'run', 'list',
+                        'update'
+  -t DIR                Option to be used with the 'plot' command to select the
+                        time analysis. The value expected is the path to the
+                        dir containing the post-processed runs
+  -m METRIC_NAMES       For the time and metrics analysis one or more metrics can be
+                        selected using this option. A comma-separated list is
+                        used for multiple metrics selection
+  -b BASE_DIR           Option to be used with the 'plot' command to select the
+                        box plot metrics plot analysis
+  --target DIR          For the metrics plot analysis you may want to specify a dir 
+                        path which contains one or many runs information to compare
+                        against the base dir provided with -k option. This target dir
+                        could be either a dir containing a single run for a specific
+                        date or a dir containing several runs for various dates or a
+                        dataset dir.
+  -p                    When used with -t or -b options, it means that the output will
+                        be printed out to stdout instead of creating a plot                             
+"""
+
+		super(MyParser,self).__init__(version="Kaust Unified Benchmark Environment (KUBE) version 0.97",usage=self.usage)
+		
+	def print_help(self):
+		self.print_usage()
+		print self.help
+	
+#####################################################################                                           
+#
+#	Main Program entry point
+#
+#####################################################################                                           
+if __name__ == "__main__":
+
+	# get the path to the current script
+	cmd_folder = os.path.abspath(os.path.split(inspect.getfile( inspect.currentframe() ))[0])
+	kube_lib_dir = cmd_folder + "/../lib/"
+
+
+	# include KUBE.LIB_DIR in the module search path 
+	if kube_lib_dir not in sys.path:
+		sys.path.insert(0, kube_lib_dir)		
+
+	# Import all the callbacks
+	from kube.callbacks import  *
+	
+	parser = MyParser()
+
+	if len(sys.argv)==1:
+		parser.print_help()
+		sys.exit(1)
+ 
+	# Commands allowed by kube:
+	parser.add_argument("command", choices=['list','run','update','plot','clean','distclean'] , help='Commands allowed by KUBE')
+
+	# options to set initial and end time when needed. The format is YYY-MM-DD
+	parser.add_argument("--start", help='Option to set the initial time when needed.', dest='since' )
+	parser.add_argument("--end" ,   help='Option to set the end time when needed.',dest='to')
+	parser.add_argument("--at" ,   help='Option to set a specific date when needed.')
+	
+	parser.add_argument("--log" ,  help='Append log information to file', dest='log')
+	
+	parser.add_argument("-d", choices=['runs','results'], help='Option to specify which directory is to be cleaned when the \'clean\' command is used' )
+
+	parser.add_argument("-a" , help='Option to select which apps benchmark from the config file will be processed. This option may accept a comma-separated list if multiple apps need to be selected. Use \'all\' to select everything. It is allowed in the following commands: \'run\', \'list\', \'update\'', dest='apps')
+	parser.add_argument("-n" , help='Option to select which network benchmark from the config file will be processed. This option may accept a comma-separated list if multiple apps need to be selected. Use \'all\' to select everything. It is allowed in the following commands: \'run\', \'list\', \'update\'', dest='nets')
+	parser.add_argument("-f" , help='Option to select which filesystem benchmark from the config file will be processed. This option may accept a comma-separated list if multiple apps need to be selected. Use \'all\' to select everything. It is allowed in the following commands: \'run\', \'list\', \'update\'', dest='filesys')
+	parser.add_argument("-s" , help='Option used to select which synthetic benchmark from the config file will be processed. This option may accept a comma-separated list if multiple apps need to be selected. Use \'all\' to select everything. It is allowed in the following commands: \'run\', \'list\', \'update\'', dest='synths')
+
+	parser.add_argument("-t" , help='Option to be used with the \'plot\' command to select the time analysis. The value expected is the path to the dir containing the post-processed runs', dest='t')
+	parser.add_argument("-m" , help='For the time analysis one or more metrics can be selected using this option. A comma-separated list is used for multiple metrics selection', dest='metric_name')
+
+	parser.add_argument("-b" , help='Option to be used with the \'plot\' command to select the metrics plot analysis',dest='b')
+	parser.add_argument("--target" , help='For the metrics plot analysis, select the target dir',dest='target')
+	parser.add_argument('-p', action='store_true', dest='p')
+	parser.add_argument('--rrd', action='store_true', dest='rrd')
+	parser.add_argument('--force', action='store_true', dest='force')
+		
+	args = parser.parse_args()
+	
+	# Associating commands with options ... 	
+	commands_opt={\
+					'distclean':[] ,\
+					'clean':['d','since','to','apps','nets','filesys','synths'] ,\
+					'run':['apps','nets','filesys','synths','log'] ,\
+					'list':['apps','nets','filesys','synths','log'],\
+					'update':['apps','nets','filesys','synths','since','to','log','rrd','force'] ,\
+					'plot':['t','b'] ,\
+	}
+	# sub-options associated to options
+	sub_opts= { 't':['metric_name','since','to','p'],'b':['metric_name','target','since','to','at','p'] }
+		
+	# get which command was invoked
+	command = args.command
+
+	# all the options and the values given ...
+	options_dict = dict([ (a,args.__dict__[a]) for a in args.__dict__.keys() if args.__dict__[a]!=None and a!='command'] ) 
+	# Do the check if the command was invoked with the accepted options
+	accepted_opts = commands_opt[command] 
+
+	# remove 'p' if command is not plot
+	if command!='plot' and options_dict.keys().count('p')!=0:
+		del options_dict['p']
+
+	# remove 'rrd' if command is not 'update'
+	if command!='update' and options_dict.keys().count('rrd')!=0:
+		if options_dict['rrd'] == False:
+			del options_dict['rrd']
+		else:
+			print "-----------------------------------" 
+			print "wrong options given to the command: \'" + command +"\'"
+			print "\'--rrd\' is not a valid option here "
+			print 
+			parser.print_usage()
+			sys.exit(1)			
+
+	# remove 'force' if command is not 'update'
+	if command!='update' and options_dict.keys().count('force')!=0:
+		if options_dict['force'] == False:
+			del options_dict['force']
+		else:
+			print "-----------------------------------" 
+			print "wrong options given to the command: \'" + command +"\'"
+			print "\'--force\' is not a valid option here "
+			print 
+			parser.print_usage()
+			sys.exit(1)			
+
+	# 't' and 'b' can not be together with 'plot' command	
+	if command == 'plot' and options_dict.keys().count('t')!=0  and options_dict.keys().count('b')!=0:
+			print "-----------------------------------" 
+			print "wrong options given to the command: \'" + command +"\'"
+			print 
+			parser.print_usage()
+			sys.exit(1)
+
+	# 'since' and 'to' can't be given along with 'at'
+	if command == 'plot' and  (( options_dict.keys().count('since')!=0  or options_dict.keys().count('to')!=0 ) and  options_dict.keys().count('at')!=0):
+			print "-----------------------------------" 
+			print "wrong options given to the command: \'" + command +"\'"
+			print 
+			parser.print_usage()
+			sys.exit(1)
+	
+	# 'clean' must be called with an argument... FALSE: by default clean cleans runs
+	#if command == 'clean' and len(options_dict.keys())==0:
+	#		print "-----------------------------------" 
+	#		print "arguments needed for command: \'" + command +"\'"
+	#		print 
+	#		parser.print_usage()
+	#		sys.exit(1)
+	
+	# 'distclean' must be called without arguments
+	if command == 'distclean' and len(options_dict.keys())!=0:
+			print "-----------------------------------" 
+			print "too many arguments for command: \'" + command +"\'"
+			print 
+			parser.print_usage()
+			sys.exit(1)	
+	
+	# for every option given, check if it is in the list of accepted ones ...
+	possible_invalid = []		
+	for o in options_dict.keys():
+		if not o in accepted_opts:
+			possible_invalid.append(o)
+			# Now check if this possible_invalid is in fact, a sub_option
+			for ao in accepted_opts: 
+				if ao in sub_opts.keys() and o in sub_opts[ao] and ao in options_dict.keys():
+					del(possible_invalid[ possible_invalid.index(o) ])
+
+	# Exit if any invalid option left		
+	if len(possible_invalid)!=0 :
+		print "-----------------------------------" 
+		print "wrong options given to the command: \'" + command +"\'"
+		print 
+		parser.print_usage()
+		sys.exit(1)
+
+	callbacks = { \
+					'distclean': clean.start ,\
+					'clean':     clean.start , \
+					'run':       run.start , \
+					'list':      view.start , \
+					'update':    update.start , \
+					'plot':     graph.start \
+	}
+	#From Now on all the options are valid.	
+	callbacks[command](options_dict)

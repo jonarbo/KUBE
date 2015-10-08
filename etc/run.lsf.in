@@ -1,0 +1,14 @@
+#!/bin/bash -l
+
+#BSUB -J %NAME%
+#BSUB -o KUBE_%NAME%_%NUMPROCS%.out
+#BSUB -e KUBE_%NAME%_%NUMPROCS%.err
+#BSUB -q %QUEUE% 
+#BSUB -W %WALLCLOCK%
+#BSUB -n %NUMPROCS%
+#BSUB -R span[ptile=%TASKS_PER_NODE%]
+
+module purge
+%MODULES%
+
+%LAUNCHER% %LAUNCHER_FLAGS% %EXE% %ARGS%  

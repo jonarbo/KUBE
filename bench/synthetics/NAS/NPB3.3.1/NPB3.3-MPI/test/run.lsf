@@ -1,0 +1,20 @@
+#!/bin/bash -l
+
+#BSUB -o NAS.out
+#BSUB -e NAS.err
+#BSUB -q rh6_q2hr 
+#BSUB -W 20 
+#BSUB -n 8
+#BSUB -a openmpi
+#BSUB -R span[ptile=8]
+
+module purge
+module load gcc mpi-openmpi
+
+mpirun.lsf ../bin/ft.A.8
+mpirun.lsf ../bin/mg.A.8
+mpirun.lsf ../bin/lu.A.8
+mpirun.lsf ../bin/is.A.8
+mpirun.lsf ../bin/ep.A.8
+mpirun.lsf ../bin/cg.A.8
+

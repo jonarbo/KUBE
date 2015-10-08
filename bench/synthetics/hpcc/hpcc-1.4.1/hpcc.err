@@ -1,0 +1,18 @@
+Loading module gcc version 4.6.0
+Initial gcc version: 4.4.4
+Current gcc version: 4.6.0
+Loading module atlas version 3.8.4-sse3
+Loading module mpi-openmpi version 1.4.3-gcc-4.6.0
+Current mpi-openmpi version: 1.4.3
+HPL ERROR from process # 0, on line 440 of function HPL_pdinfo:
+>>> Need at least 128 processes for these tests <<<
+
+HPL ERROR from process # 0, on line 440 of function HPL_pdinfo:
+>>> Need at least 128 processes for these tests <<<
+
+Loading module gcc version 4.6.0
+Initial gcc version: 4.4.4
+Current gcc version: 4.6.0
+Loading module atlas version 3.8.4-sse3
+Loading module mpi-openmpi version 1.4.3-gcc-4.6.0
+Current mpi-openmpi version: 1.4.3
