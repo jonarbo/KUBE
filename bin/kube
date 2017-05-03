@@ -24,9 +24,9 @@ kube <COMMAND> <OPTIONS>
 
 Some <OPTIONS> are specific to some <COMMANDS>: 
 -----------------------------------------------
-kube list    [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS]
-kube run     [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS] [--log FILE]
-kube update  [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS] [--start START] [--end END] [--log FILE] [--rrd] [--force]
+kube list   [-c config_file] [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS]
+kube run    [-c config_file] [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS] [--log FILE]
+kube update [-c config_file] [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS] [--start START] [--end END] [--log FILE] [--rrd] [--force]
 kube plot   -t DIR [-p] [-m METRIC_NAMES] [--start START] [--end END] 
 kube plot   -b BASE_DIR [-p] [--target DIR] [-m METRIC_NAMES] { [--start START] [--end END] , [--at DATE] } }
 kube clean   -d {runs,results} [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS] [--start START] [--end END]
@@ -96,7 +96,9 @@ optional arguments:
                         date or a dir containing several runs for various dates or a
                         dataset dir.
   -p                    When used with -t or -b options, it means that the output will
-                        be printed out to stdout instead of creating a plot                             
+  -c                    Manually select which config file to use. If not specified, the 
+			default 'kube.yaml' will be used (under $KUBE_HOME/etc). If not 
+			full path is used, then the search path will be $KUBE_HOME/etc
 """
 
 		super(MyParser,self).__init__(version="Kaust Unified Benchmark Environment (KUBE) version 0.97",usage=self.usage)
