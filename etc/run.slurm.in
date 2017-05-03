@@ -1,0 +1,12 @@
+#!/bin/bash -l
+
+#SBATCH -J %NAME%
+#SBATCH -o KUBE_%NAME%_%NUMPROCS%.out
+#SBATCH -e KUBE_%NAME%_%NUMPROCS%.err
+#SBATCH -n %NUMPROCS%
+#SBATCH -C avx2
+
+module purge
+%MODULES%
+
+%LAUNCHER% %LAUNCHER_FLAGS% %EXE% %ARGS%  

@@ -27,7 +27,7 @@ def clean(dir,removeDir=False):
 	if removeDir == True:
 		os.rmdir( dir ) 	
 
-def syscall(str, wait = True ):	
+def syscall(str, wait=True  ):	
 	"""Wrapper function to make a system call where pipes are allowed"""
   	cmds = str.split("|")
 	cmds = list(map(shlex.split,cmds))
@@ -35,13 +35,18 @@ def syscall(str, wait = True ):
 	stdout_old = None
 	stderr_old = None
 	p = []
-	for cmd in cmds:
-		p.append(subprocess.Popen(cmd,stdin=stdout_old,stdout=subprocess.PIPE,stderr=subprocess.PIPE))
-		stdout_old = p[-1].stdout
-		stderr_old = p[-1].stderr
-	
-	if 	wait:
-		return p[-1].communicate()
+	try:
+		for cmd in cmds:
+			p.append(subprocess.Popen(cmd,stdin=stdout_old,stdout=subprocess.PIPE,stderr=subprocess.PIPE))
+			stdout_old = p[-1].stdout
+			stderr_old = p[-1].stderr
+		if wait:
+			return p[-1].communicate()
+	except:
+		e = sys.exc_info()[0]
+		printer.error("Call error","There was an error executing '"+ str +"'" )
+		print e
+		sys.exit(1)	
 
 def frange(start, end=None, inc=None):
     """A range function, that does accept float increments..."""

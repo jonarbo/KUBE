@@ -13,8 +13,13 @@ def start( args ):
 		kube.py update  [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS] [--since SINCE] [--to TO] [--rrd] [--log FILE] [--force]
 	"""
 
+	configfile=None
+	if  args.keys().count('configfile') != 0:
+		configfile=args['configfile']
+		del args['configfile'] 
+
 	# create the engine instance
-	kube = KUBE()
+	kube = KUBE(configfile)
 	
 	opts = args.keys()
 	if 'log' in opts:

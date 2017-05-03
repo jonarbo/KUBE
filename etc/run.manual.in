@@ -1,0 +1,22 @@
+#!/bin/bash -l
+#
+# Template script to run any app (parallel/serial) manually 
+# For parallel apps just set the correct vars in the yaml for
+# LAUNCHER and LAUNCHER_FLAGS
+#
+
+#
+# We dont want any output to the console
+#
+module purge 	2>/dev/null
+%MODULES% 	2>/dev/null 
+
+#
+# The "&" is needed !!! to run in the background
+#
+%LAUNCHER% %LAUNCHER_FLAGS% %EXE% %ARGS%  &
+
+#
+# This will return the mpi jobid .. needed to monitor the job
+#
+jobs -l  | gawk '{print $2}' | grep -e "^[0-9]*$"

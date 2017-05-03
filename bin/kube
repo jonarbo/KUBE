@@ -135,8 +135,8 @@ if __name__ == "__main__":
 
 	# options to set initial and end time when needed. The format is YYY-MM-DD
 	parser.add_argument("--start", help='Option to set the initial time when needed.', dest='since' )
-	parser.add_argument("--end" ,   help='Option to set the end time when needed.',dest='to')
-	parser.add_argument("--at" ,   help='Option to set a specific date when needed.')
+	parser.add_argument("--end"  , help='Option to set the end time when needed.',dest='to')
+	parser.add_argument("--at"   , help='Option to set a specific date when needed.')
 	
 	parser.add_argument("--log" ,  help='Append log information to file', dest='log')
 	
@@ -156,15 +156,17 @@ if __name__ == "__main__":
 	parser.add_argument('--rrd', action='store_true', dest='rrd')
 	parser.add_argument('--force', action='store_true', dest='force')
 		
+	parser.add_argument('-c', dest='configfile' , help='Option used to select a specific config file instead of the default \'kube.yaml\'')
+	
 	args = parser.parse_args()
 	
 	# Associating commands with options ... 	
 	commands_opt={\
 					'distclean':[] ,\
 					'clean':['d','since','to','apps','nets','filesys','synths'] ,\
-					'run':['apps','nets','filesys','synths','log'] ,\
-					'list':['apps','nets','filesys','synths','log'],\
-					'update':['apps','nets','filesys','synths','since','to','log','rrd','force'] ,\
+					'run':['apps','nets','filesys','synths','log','configfile'] ,\
+					'list':['apps','nets','filesys','synths','log','configfile'],\
+					'update':['apps','nets','filesys','synths','since','to','log','rrd','force','configfile'] ,\
 					'plot':['t','b'] ,\
 	}
 	# sub-options associated to options
@@ -222,14 +224,6 @@ if __name__ == "__main__":
 			parser.print_usage()
 			sys.exit(1)
 	
-	# 'clean' must be called with an argument... FALSE: by default clean cleans runs
-	#if command == 'clean' and len(options_dict.keys())==0:
-	#		print "-----------------------------------" 
-	#		print "arguments needed for command: \'" + command +"\'"
-	#		print 
-	#		parser.print_usage()
-	#		sys.exit(1)
-	
 	# 'distclean' must be called without arguments
 	if command == 'distclean' and len(options_dict.keys())!=0:
 			print "-----------------------------------" 
@@ -262,7 +256,7 @@ if __name__ == "__main__":
 					'run':       run.start , \
 					'list':      view.start , \
 					'update':    update.start , \
-					'plot':     graph.start \
+					'plot':      graph.start \
 	}
 	#From Now on all the options are valid.	
 	callbacks[command](options_dict)

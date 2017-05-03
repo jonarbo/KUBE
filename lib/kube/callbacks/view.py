@@ -13,9 +13,14 @@ def start( args ):
 		kube.py view [-a APPS] [-n NETS] [-f FILESYS] [-s SYNTHS]
 	"""
 
-	# create the engine instance
-	kube = KUBE()
+	configfile=None
+	if  args.keys().count('configfile') != 0:
+		configfile=args['configfile']
+		del args['configfile'] 
 
+	# create the engine instance
+	kube = KUBE(configfile)
+	
 	if len( args.keys())==0:
 		# view everything
 		kube.view()	

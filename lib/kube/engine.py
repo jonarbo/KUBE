@@ -13,6 +13,7 @@ import shutil
 import datetime, time
 import math
 import copy
+import stat
 
 # get the path to the current script
 cmd_folder = os.path.abspath(os.path.split(inspect.getfile( inspect.currentframe() ))[0])
@@ -50,45 +51,38 @@ class KUBE:
 		"""
 		batch =  self.__getBatchSystem(whichdataset)	
 		
-		if batch == None:	
-			if whichdataset.keys().count('args') != 0:  # other values should be mandatory and checked when file correctness is executed
-				data = str(whichdataset['exe'] )+ " " + str(whichdataset['args'] )
-			else:
-				data = str(whichdataset['exe'] )
-		elif  batch['name'] != "MANUAL":
+		if (whichdataset.keys().count('script') != 0):	
+			submit_script = whichdataset['script']
+		elif (batch.keys().count('script')!=0):
 			submit_script = batch['script']
+		else:
+			printer.error("Missing script","Can't find any run/submission script for this batch system '"+batch['name']+"'" )
+			sys.exit(1)	
+		
+		if re.match("[^/]",submit_script):
+			submit_script = self.home + "/etc/" + submit_script
+		
+		try:
 			file = open(submit_script,'r')
 			data = file.read()
 			file.close()		
-		else:
-			# TODO: what happens when there is no batch system
-			# Get manual submission command:
-			if whichdataset.keys().count('args') != 0:  # other values should be mandatory and checked when file correctness is executed
-				data =  str(batch['submit']['command']) + " " + str(batch['submit']['parameters'] )+ " " + str(whichdataset['exe'] )+ " " + str(whichdataset['args'] )
-			else:
-				data =  str(batch['submit']['command']) + " " + str(batch['submit']['parameters'] )+ " " + str(whichdataset['exe'] )
+		except:
+			e = sys.exc_info()[0]
+			printer.error("Script error","There was an error reading the file '"+ submit_script +"'" )
+			print e
+			sys.exit(1)	
 			
+
 		# replace variables
-		counter=1
-		repeat = True
-		while repeat and counter < 20:	
-			for litem in  whichdataset:
-				str2find = "%("+ str(litem).upper() +")%"
-				prog = re.compile(str2find);
-				if litem != 'numprocs':
-						#data = prog.sub( unicode(whichdataset[litem]) ,data)	
-						data = prog.sub( str(whichdataset[litem]) ,data)	
-				else:
-					#data = prog.sub( unicode(p) ,data)		
-					data = prog.sub( str(p).strip() ,data)		
-			
-			if re.search("%.+%", data) != None:
-				repeat = True
-				counter = counter +1
+		for litem in  whichdataset:
+			str2find = "%("+ str(litem).upper() +")%"
+			prog = re.compile(str2find);
+			if litem != 'numprocs':
+				data = prog.sub( str(whichdataset[litem]) ,data)	
 			else:
-				repeat = False	
-		
-		if counter>19:
+				(data,n) = prog.subn( str(p).strip() ,data)		
+	
+		if re.search("%.+%", data) != None:
 			printer.error("Missing variable","I suspect that you missed to define some variable in the config file that is needed; presumably in the batch script." )
 			sys.exit(1)	
 				
@@ -292,8 +286,8 @@ set style histogram cluster
 set style fill solid 0.2 border lt -1
 set grid
 set bmargin 5
-set term qt persist title 'KUBE'   font 'sans'
-#set term x11 persist title 'KUBE'  font 'sans' 
+#set term qt persist title 'KUBE'   font 'sans'
+set term x11 persist title 'KUBE'  font 'sans' 
 """) 
 #		plotstr = "plot '" + template + "/.metrics_analysis.raw' every ::1 using 2:xtic(1) title '" + legend[0]+ " Date: " + timestamp[0] +"' "
 #		plotstr = plotstr +  ", for [n=3:"+ str(len(m_values)+1) + "]  '' u (column(n)) title columnhead(n) " 
@@ -455,8 +449,8 @@ set xtics axis
 set ytics axis 
 set grid
 set style fill solid 0.2
-set term qt persist size 1280,640 title 'KUBE'   font 'sans'
-#set term x11 persist title 'KUBE'  font 'sans'
+#set term qt persist size 1280,640 title 'KUBE'   font 'sans'
+set term x11 persist title 'KUBE'  font 'sans'
 set format y '%f'	
 set bmargin 7
 set xtics rotate
@@ -495,6 +489,7 @@ set xtics rotate
 			
 		# and call it
 		syscall ( "gnuplot " + gnuplotfile )[1]
+
 
 #####################################################################                                           
 #
@@ -1004,7 +999,7 @@ set xtics rotate
 							os.chdir("..") 	
 							shutil.rmtree(i)	
 							break
-						else:											
+						else:	
 							ref_value = reference if refIsValue else syscall(reference)[0].strip()
 							if len(ref_value) != 0:
 								try:
@@ -1383,79 +1378,78 @@ set xtics rotate
 	
 			failed = False			
 			# submit or run job
-			if  dataset.keys().count('batch')==0 or dataset['batch'] == 'None' :
-				# No batch system found .... 
-				syscall( data, False )
-				tops = data.split("|")[0].split()
-				Printer.Level = Printer.Level + 1		
+			try: 
+				o = open( "run.batch.tmp", "w" )	
+				o.write(data)
+			except:
+				e = sys.exc_info()[0]
+				printer.error("Cant create file","run.batch in "+ os.getcwd() )
+				print e
+				sys.exit(1)
+			finally:
+				o.flush()
+				o.close	
+	
+			#
+			# workaround to remove the message "text file busy"
+			# when trying to execute the script 
+			#	
+			shutil.copyfile("run.batch.tmp","run.batch")
+			os.chmod('run.batch',0755)
+			os.remove("run.batch.tmp")		
+			
+			# get the batch system submission commands	
+			mybatch = self.__getBatchSystem(dataset)
+			if mybatch == None:
 				if waiting:
 					printer.info("") # remove the wait flag
-					waiting = None		
-				printer.info("Running"," ".join(tops))
-				checkcmd = "ps -fea | grep \"" + " ".join(tops)  + "\" | grep -v grep  | wc -l "				
-				out,err = syscall (checkcmd)
-				if str(out).strip().isdigit():
-					printer.info( "Instances" , str(out).strip()  )
-				else:
-					printer.error("Command line execution","It seems the task is not running, please confirm it yourself.")
+					waiting = None
 				Printer.Level = Printer.Level + 1	
-
-			elif  dataset['batch'] == "MANUAL":
-				syscall( data )
-			else:
-				o = open( "run.batch","w")		
-								
-				o.write(data)
-				o.flush()
-				o.close		
-				# get the batch system submission commands	
-				mybatch = self.__getBatchSystem(dataset)
-				if mybatch == None:
-					if waiting:
-						printer.info("") # remove the wait flag
-						waiting = None
-					Printer.Level = Printer.Level + 1	
-					printer.error("Batch system error","Could not find any valid Batch system.")
-					Printer.Level = Printer.Level - 1			
-					sys.exit(1)
-					
-				submit_cmd = mybatch['submit']['command']
-				submit_params = mybatch['submit']['parameters']	
+				printer.error("Batch system error","Could not find any valid Batch system.")
+				Printer.Level = Printer.Level - 1			
+				sys.exit(1)
 				
+			submit_cmd = mybatch['submit']['command']
+			submit_params = mybatch['submit']['parameters']	
+			
+			if submit_cmd == "run.batch":
+				cmd = "./"+submit_cmd
+			else:
 				if submit_params=="<":
-					cmd =  " cat run.batch |  " + submit_cmd
+					cmd = "cat run.batch |  " + submit_cmd
 				else:
 					cmd = submit_cmd + " " + submit_params + " run.batch"
-				
-				out,err = syscall( cmd )								
-				sopattern = mybatch['submit']['submittedmsg']
-				sopattern = sopattern.replace("%JOBID%","(\d+)")
-				mobj = re.search(sopattern,out)
-				if mobj:
-					jobid = mobj.group(1)
-					cmd = "touch batch.jobid." + jobid
-					syscall( cmd )
-					oLevel = Printer.Level
-					if waiting:
-							Printer.Level = 0
-							printer.info("Submitted")
-							Printer.Level = oLevel
-					else:
-						Printer.Level = Printer.Level + 1
+			
+			out,err = syscall( cmd )								
+			
+			sopattern = mybatch['submit']['submittedmsg']
+			sopattern = sopattern.replace("%JOBID%","(\d+)")
+			mobj = re.search(sopattern,out)
+			if mobj:
+				jobid = mobj.group(1)
+				cmd = "touch batch.jobid." + jobid
+				syscall( cmd )
+
+				oLevel = Printer.Level
+				if waiting:
+						Printer.Level = 0
 						printer.info("Submitted")
-						Printer.Level = Printer.Level - 1
+						Printer.Level = oLevel
 				else:
-					if waiting:
-						printer.info("") # remove the wait flag
-						waiting = None
-					Printer.Level = Printer.Level + 1	
-					printer.error("Warning","It seems there was a problem while submitting this job.")
-					printer.warning("Please read the following error message:")
-					printer.plain(err)
+					Printer.Level = Printer.Level + 1
+					printer.info("Submitted")
 					Printer.Level = Printer.Level - 1
-					failed = True
-													
-			#os.chdir("..")	
+			else:
+				if waiting:
+					printer.info("") # remove the wait flag
+					waiting = None
+				Printer.Level = Printer.Level + 1	
+				printer.error("Warning","It seems there was a problem while submitting this job.")
+				printer.warning("Please read the following error message:")
+				printer.plain(err)
+				Printer.Level = Printer.Level - 1
+				failed = True
+												
 			os.chdir(t)	
 			if failed:
 				# mark directory as failed
@@ -1475,16 +1469,11 @@ set xtics rotate
 			if no item is given
 		"""		
 		printer.plain(printer.bold("*************************************************************"))
-		printer.plain(printer.bold("***")+"  Current configuration for the KAUST Benchmark Suite  "+printer.bold("***"))
+		printer.plain(printer.bold("***")+" Current configuration for the KAUST Benchmark Suite  "+printer.bold("***"))
 		printer.plain(printer.bold("*************************************************************"))
 			
 		if item == None: # means show the global configuration	
 	
-			#self.__readApps(yaml_conf)
-			#self.__readNets(yaml_conf)
-			#self.__readSynthetics(yaml_conf)
-			#self.__readFilesystems(yaml_conf)
-
 			printer.info("KUBE Home",self.home )
 			printer.info("KUBE Runs",self.runs_dir )
 			printer.info("KUBE Results",self.results_dir )
@@ -1494,10 +1483,7 @@ set xtics rotate
 				Printer.Level = Printer.Level + 1
 				printer.info(nbatch['name'] +":") 
 				Printer.Level = Printer.Level + 1
-				if  nbatch['name'] != "MANUAL" :
-					printer.info("Submission script",nbatch['script'])
-				else:
-					printer.info("Submission command",nbatch['submit']['command'] + ' '+ nbatch['submit']['parameters'])			
+				printer.info("Submission command",nbatch['submit']['command'] + ' '+ nbatch['submit']['parameters'])			
 				Printer.Level = Printer.Level - 2 
 				
 			printer.info("Items to Benchmark")			
@@ -1588,15 +1574,11 @@ set xtics rotate
 			printer.info("Using command line execution\n")
 			return 
 						
-		submit_cmd = mybatch['submit']['command']
-		submit_params = mybatch['submit']['parameters']
-		
-		if  mybatch['name'] == "MANUAL":
-			# No batch system found .... 
-			printer.info("Using manual launcher", submit_cmd +" " + submit_params )
-		else:
-			submit_script = mybatch['script']
-			printer.plain("Using " + printer.bold(str(mybatch['name']))+ " batch system" )
+		submit_script = mybatch['script']
+		printer.plain("Using " + printer.bold(str(mybatch['name']))+ " batch system" )
+		if  mybatch['name'] != "None":
+			submit_cmd = mybatch['submit']['command']
+			submit_params = mybatch['submit']['parameters']
 			printer.info("Submission command",submit_cmd +" " + submit_params)
 		printer.plain(printer.bold("-------------------------------------------------"))
 
@@ -1736,7 +1718,7 @@ set xtics rotate
 						notToReplace=['name','datasets','active']	
 						for sk in a.keys():
 							if sk=="batch": # Force the dataset to use always the batch system defined  for the app
-											# the 'batch' parameter is global to the app, not dataset specific 
+									# the 'batch' parameter is global to the app, not dataset specific 
 								dataset[sk] = a[sk] # no deepcopy needed as we want a reference to the batch system
 							elif sk=="tools": # Force the dataset to use always the globally defined  value, no redefinition allowed
 								dataset['common'] = str(a[sk]) + "/common/"
@@ -1776,12 +1758,14 @@ set xtics rotate
 									printer.error("Please revise your configuration file !!!")
 									sys.exit(1)
 								
-							
 						if dataset.keys().count('outputs')==0 :
 							printer.error("Config file error"," Dataset of " + printer.bold(appname) + " found without 'outputs'. This tag is mandatory!!!") 
 							printer.error("Please revise your configuration file !!!")
 							sys.exit(1)	
 
+						if dataset.keys().count('hostsfile')!=0 and re.match("[^/]",dataset['hostsfile']) :
+                       					dataset['hostsfile']= self.home + "/etc/" + dataset['hostsfile']					
+							
 						break # step out apps loop
 
 		self.__substituteVarsForAnalysis(self.a_apps)
@@ -1822,26 +1806,6 @@ set xtics rotate
 		self.__populateElements(self.a_filesys ,self.filesys,yaml_conf)
 		self.__substituteVarsForAnalysis(self.a_filesys)
 
-
-	def __substituteVarsInBatch_MANUAL(self):
-		""" The 'MANUAL' batch system should be very flexible. For that reason inside the 'submit' tag,
-			any field can use references to any tag defined in the MANUAL batch definition.
-			This function does the replacement. References to dataset specific tags such as 
-			%NUMPROCS% are also allowed but those are replaced later on when the submission script is created.
-		"""
-		# Replace inline variables in batch: MANUAL section	
-		for batch in self.batchs: 	
-			if batch['name'] == "MANUAL":
-				str2find = {}
-				for nkey in batch.keys():
-					str2find[nkey]= "%"+ nkey.upper() +"%"
-				for sstr in str2find.keys():
-					reple = re.compile( str2find[sstr] );
-					for nkey2 in batch.keys():
-						if isinstance(batch[nkey2],dict) and not isinstance(batch[sstr],dict):
-							for elem in batch[nkey2]:
-								batch[nkey2][elem] = reple.sub(batch[sstr],batch[nkey2][elem])		
-				break;
 
 	# Substitute in the target string, all the matches contained in keysDict with the values in dataset[ ... ] 
 	def __substitute( self, strTarget , keysDict, dataset  ):
@@ -2009,10 +1973,6 @@ set xtics rotate
                                                                 printer.error("Config file error"," Cannot figure out the number of tasks to run for " + printer.bold(aname) +" !!!")
                                                                 printer.error("Please revise your configuration file !!!")
                                                                 sys.exit(1)
-
-							#printer.error("Config file error"," Dataset of " + printer.bold(aname) + " found without 'numprocs'. This tag is mandatory!!!") 
-							#printer.error("Please revise your configuration file !!!")
-							#sys.exit(1)	
 						else:
 							nprocs = str(dataset['numprocs']).split(',')
 							if len(nprocs) == 0:
@@ -2032,6 +1992,9 @@ set xtics rotate
 							printer.error("Config file error"," Dataset of " + printer.bold(aname) + " found without 'outputs'. This tag is mandatory!!!") 
 							printer.error("Please revise your configuration file !!!")
 							sys.exit(1)	
+						
+						if dataset.keys().count('hostsfile')!=0 and re.match("[^/]",dataset['hostsfile']) :
+                       					dataset['hostsfile']= self.home + "/etc/" + dataset['hostsfile']					
 								
 						break # step out 'a' loop		
 
@@ -2119,32 +2082,33 @@ set xtics rotate
 			sys.exit(1)	
 		# set absolute path to the scripts and do some error check
 		for nbatch in self.batchs:
-			if nbatch.keys().count('name')==0 or nbatch.keys().count('submit')==0:
-				printer.error("Config file error"," 'name' and 'submit' tags are mandatory in the BATCH" )
-				sys.exit(1)
-			if nbatch['submit'] == None : 
-				printer.error("Config file error","'submit' tag in one of your BATCHs is empty")
-				sys.exit(1)
-			else:
-				if nbatch['submit'].keys().count('parameters')==0:
-					 nbatch['submit']['parameters'] = ' '
-				if nbatch['submit'].keys().count('submittedmsg')==0 and nbatch['name']!="MANUAL":
-					printer.error("Config file error","'submit' tag in one of your BATCHs is missing the field 'submittedmsg'")
+			if nbatch['name']==None or nbatch['name']=='':
+				printer.error("Config file error","Missing 'name' in one of your BATCHs")
+				sys.exit(1)	
+		
+			if nbatch['name']!="None" and nbatch['name']!=None:
+				if ( nbatch.keys().count('name')==0 or nbatch.keys().count('submit')==0):
+					printer.error("Config file error"," 'name' and 'submit' tags are mandatory in the BATCH" )
 					sys.exit(1)
-			if  nbatch['name'] != "MANUAL" and nbatch['name']!=None:
-				if  nbatch.keys().count('script')==0:
-					printer.error("Config file error"," 'script' tag is mandatory in an a BATCH unless you name it as 'MANUAL'")
+				if nbatch['submit'] == None : 
+					printer.error("Config file error","'submit' tag in one of your BATCHs is empty")
 					sys.exit(1)
-				if nbatch['script']!=None:
+				else:
+					if nbatch['submit'].keys().count('parameters')==0:
+						 nbatch['submit']['parameters'] = ' '
+					if nbatch['submit'].keys().count('submittedmsg')==0:
+						printer.error("Config file error","'submit' tag in one of your BATCHs is missing the field 'submittedmsg'")
+						sys.exit(1)
+			
+				if  nbatch.keys().count('script')==0 or  nbatch['script']==None:
+					print nbatch['name']	
+					print nbatch.keys().count('script')	
+					printer.error("Config file error"," 'script' tag is mandatory in an a BATCH")
+					sys.exit(1)
+				else:
 					if re.match("[^/]",nbatch['script']):
 						nbatch['script'] = self.home + "/etc/" + nbatch['script']
-				else:
-					printer.error("Config file error","Missing 'script' in one of your non 'MANUAL' BATCHs")
-					sys.exit(1)			
-			else:
-				if nbatch['name']==None or nbatch['name']=='':
-					printer.error("Config file error","Missing 'name' in one of your BATCHs")
-					sys.exit(1)	
+
 		
 		# Verify that the main tags ni BENCH section exist
 		if (yaml_conf['KUBE']['BENCH'].keys().count('APPS') == 0) or \
@@ -2181,7 +2145,6 @@ set xtics rotate
 			sys.exit(e.errno)
 
 		printer.info("Using configuration file",  printer.bold(cfname) )
-		#printer.info("")
 		
 		# global variable holding the configuration 
 		yaml_conf = yaml.load( stream )		
@@ -2192,7 +2155,6 @@ set xtics rotate
 		if KUBE.LIB_DIR not in sys.path:
 			sys.path.insert(0, KUBE.LIB_DIR)		
 		self.__loadYaml(configfile)
-		self.__substituteVarsInBatch_MANUAL()
 
 	def __cleanOldRuns(self):
 		"""Function that removes old runs according to the 'lifespan' param"""
