@@ -60,7 +60,7 @@ KUBE:
                 parameters: ' '  
                 submittedmsg: "%JOBID%" 
           launcher: mpirun 
-          #hostsfile: hostslist
+          hostsfile: hostslist
           #launcher_flags: '-np %NUMPROCS% --machinefile=%HOSTSFILE% '     
           launcher_flags: '-np %NUMPROCS%'     
           modules: module load openmpi 

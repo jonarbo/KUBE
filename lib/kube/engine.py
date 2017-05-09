@@ -793,8 +793,9 @@ set xtics rotate
 		END = 2*math.pi
 		for rd in u:
 	
+			print "asfasfas" + rd	
 			#get the cpus from the run name:
-			str2find = "(\d+)cpus_"	
+			str2find = "(\d+)cpus_{0,1}?"	
 			reple = re.compile( str2find )
 			mobj = reple.search(rd)
 			cpus = mobj.group(1)
@@ -1211,7 +1212,7 @@ set xtics rotate
 			elif not os.path.exists(t+dataset['name']):
 				os.makedirs(t+dataset['name'])
 				
-			cwd = os.getcwd()
+			#cwd = os.getcwd()
 			os.chdir(t)					
 
 			###########################
